@@ -6,6 +6,7 @@ const db = require('../config/database');
 const jwt = require('jsonwebtoken');
 const authMiddleware = require('../middleware/auth');
 const pool = require('../config/database');
+const sessionManager = require('../middleware/sessionManager');
 
 const validatePassword = (password) => {
     const errors = [];
@@ -386,83 +387,101 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   let connection;
   try {
-    const { email, password } = req.body;
+      const { email, password } = req.body;
+      const deviceInfo = {
+          userAgent: req.headers['user-agent'],
+          platform: req.headers['sec-ch-ua-platform'],
+          mobile: req.headers['sec-ch-ua-mobile']
+      };
+      const ipAddress = req.ip;
 
-    connection = await pool.getConnection();
-    
-    // Update query to check status
-    const [users] = await connection.query(
-        `SELECT u.*, up.blood_type, up.date_of_birth, up.gender, up.area 
-        FROM users u 
-        LEFT JOIN user_profiles up ON u.id = up.user_id 
-        WHERE u.email = ?`,
-        [email]
-    );
+      connection = await pool.getConnection();
+      
+      const [users] = await connection.query(
+          `SELECT u.*, up.blood_type, up.date_of_birth, up.gender 
+           FROM users u 
+           LEFT JOIN user_profiles up ON u.id = up.user_id 
+           WHERE u.email = ?`,
+          [email]
+      );
 
-    if (users.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    const user = users[0];
-
-    // Check if user is inactive
-    if (user.status === 'inactive') {
-      return res.status(403).json({
-        success: false,
-        message: 'Your account has been deactivated. Please contact the administrator.'
-      });
-    }
-
-    const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    // Generate token if user is active and password is valid
-    const token = jwt.sign(
-      { 
-        userId: user.id,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    // Remove sensitive data
-    delete user.password;
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        bloodType: user.blood_type,
-        dateOfBirth: user.date_of_birth,
-        gender: user.gender,
-        area: user.area
+      if (users.length === 0) {
+          return res.status(401).json({
+              success: false,
+              message: 'Invalid email or password'
+          });
       }
-    });
+
+      const user = users[0];
+      const validPassword = await bcrypt.compare(password, user.password);
+
+      if (!validPassword) {
+          return res.status(401).json({
+              success: false,
+              message: 'Invalid email or password'
+          });
+      }
+
+      // Check for existing active session
+      const [existingSessions] = await connection.query(
+          `SELECT * FROM user_sessions 
+           WHERE user_id = ? AND last_active > DATE_SUB(NOW(), INTERVAL 24 HOUR)`,
+          [user.id]
+      );
+
+      if (existingSessions.length > 0) {
+          // Optionally notify the user that they're already logged in elsewhere
+          return res.status(400).json({
+              success: false,
+              message: 'You are already logged in on another device or browser. Please log out first.',
+              code: 'ACTIVE_SESSION_EXISTS'
+          });
+      }
+
+      // Create new session
+      const sessionId = await sessionManager.createSession(
+          user.id,
+          JSON.stringify(deviceInfo),
+          ipAddress
+      );
+
+      // Generate token with session ID
+      const token = jwt.sign(
+          { 
+              userId: user.id,
+              role: user.role,
+              sessionId: sessionId
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+      );
+
+      // Remove sensitive data
+      delete user.password;
+
+      res.json({
+          success: true,
+          token,
+          sessionId,
+          user: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              bloodType: user.blood_type,
+              dateOfBirth: user.date_of_birth,
+              gender: user.gender
+          }
+      });
 
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Login failed',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+      console.error('Login error:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Login failed'
+      });
   } finally {
-    if (connection) connection.release();
+      if (connection) connection.release();
   }
 });
 
