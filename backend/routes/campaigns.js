@@ -300,7 +300,6 @@ router.get('/:campaignId/check-reservation/:userId', async (req, res) => {
   }
 });
 
-// backend/routes/campaigns.js
 router.get('/upcoming', async (req, res) => {
   let connection;
   try {
