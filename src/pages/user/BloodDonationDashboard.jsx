@@ -24,6 +24,8 @@ const BloodDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArea, setFilterArea] = useState('');
   const [selectedBloodType, setSelectedBloodType] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const COLORS = {
     'A+': '#ef4444',
@@ -273,18 +275,30 @@ const BloodDashboard = () => {
                     type="text"
                     placeholder="Search blood banks..."
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                   />
                 </div>
                 <select
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  onChange={(e) => setFilterArea(e.target.value)}
+                  onChange={(e) => { setFilterArea(e.target.value); setCurrentPage(1); }}
                 >
                   <option value="">All Areas</option>
                   {Array.from(new Set(stats.bloodBanks?.map(bank => bank.area))).map(area => (
                     <option key={area} value={area}>{area}</option>
                   ))}
                 </select>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Rows:</span>
+                  <select
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    value={rowsPerPage}
+                    onChange={(e) => { setRowsPerPage(parseInt(e.target.value)); setCurrentPage(1); }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -307,12 +321,19 @@ const BloodDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {stats.bloodBanks
-                  ?.filter(bank => 
-                    bank.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-                    (!filterArea || bank.area === filterArea)
-                  )
-                  .map((bank) => (
+                {(() => {
+                  const filteredBanks = (stats.bloodBanks || [])
+                    .filter(bank =>
+                      bank.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                      (!filterArea || bank.area === filterArea)
+                    );
+
+                  const totalPages = Math.max(1, Math.ceil(filteredBanks.length / rowsPerPage));
+                  const safeCurrentPage = Math.min(currentPage, totalPages);
+                  const startIndex = (safeCurrentPage - 1) * rowsPerPage;
+                  const paginatedBanks = filteredBanks.slice(startIndex, startIndex + rowsPerPage);
+
+                  return paginatedBanks.map((bank) => (
                     <tr key={bank.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -337,10 +358,56 @@ const BloodDashboard = () => {
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
+          {(() => {
+            const filteredBanks = (stats.bloodBanks || [])
+              .filter(bank =>
+                bank.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                (!filterArea || bank.area === filterArea)
+              );
+            const totalItems = filteredBanks.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage));
+            const safeCurrentPage = Math.min(currentPage, totalPages);
+            const startItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * rowsPerPage + 1;
+            const endItem = Math.min(totalItems, safeCurrentPage * rowsPerPage);
+
+            return (
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 border-t border-gray-200">
+                <div className="text-sm text-gray-600">
+                  Showing {startItem}-{endItem} of {totalItems}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="px-3 py-2 text-sm border rounded-lg disabled:opacity-50"
+                    disabled={safeCurrentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      className={`px-3 py-2 text-sm border rounded-lg ${page === safeCurrentPage ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700'}`}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    className="px-3 py-2 text-sm border rounded-lg disabled:opacity-50"
+                    disabled={safeCurrentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
