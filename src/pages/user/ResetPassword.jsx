@@ -38,11 +38,15 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
+      const emailTrimmed = (formData.email || '').trim();
+      if (!emailTrimmed) {
+        throw new Error('Please enter your email address');
+      }
       if (step === 1) {
         const verifyResponse = await fetch('http://localhost:5000/api/auth/verify-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: formData.email })
+          body: JSON.stringify({ email: emailTrimmed })
         });
 
         if (!verifyResponse.ok) {
@@ -53,7 +57,7 @@ const ResetPassword = () => {
         const otpResponse = await fetch('http://localhost:5000/api/auth/send-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: formData.email })
+          body: JSON.stringify({ email: emailTrimmed })
         });
 
         if (!otpResponse.ok) {
@@ -67,7 +71,7 @@ const ResetPassword = () => {
         const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: formData.email, otp })
+          body: JSON.stringify({ email: emailTrimmed, otp })
         });
 
         if (!response.ok) {
@@ -84,7 +88,7 @@ const ResetPassword = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: formData.email,
+            email: emailTrimmed,
             newPassword: formData.newPassword,
             otp
           })
