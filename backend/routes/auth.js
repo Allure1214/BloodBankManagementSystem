@@ -38,7 +38,11 @@ const generateOTP = () => {
 router.post('/verify-email', async (req, res) => {
   let connection;
   try {
-    const { email } = req.body;
+    let { email } = req.body;
+
+    if (typeof email === 'string') {
+      email = email.trim();
+    }
 
     if (!email) {
       return res.status(400).json({
@@ -49,10 +53,10 @@ router.post('/verify-email', async (req, res) => {
 
     connection = await pool.getConnection();
 
-    // Check if user exists, is active, and has user role
+    // Check if user exists
     const [users] = await connection.query(
-      'SELECT id, status, role FROM users WHERE email = ? AND role = ?',
-      [email, 'user']
+      'SELECT id, status, role FROM users WHERE email = ?',
+      [email]
     );
 
     if (users.length === 0) {
@@ -606,46 +610,6 @@ router.get('/me', authMiddleware, async (req, res) => {
     }
 });
 
-router.post('/verify-email', async (req, res) => {
-  let connection;
-  try {
-      const { email } = req.body;
-
-      if (!email) {
-          return res.status(400).json({
-              message: 'Email is required'
-          });
-      }
-
-      connection = await db.getConnection();
-
-      // Check if user exists
-      const [users] = await connection.query(
-          'SELECT id FROM users WHERE email = ?',
-          [email]
-      );
-
-      if (users.length === 0) {
-          return res.status(404).json({
-              message: 'No account found with this email address'
-          });
-      }
-
-      res.json({
-          message: 'Email verified successfully'
-      });
-
-  } catch (error) {
-      console.error('Email verification error:', error);
-      res.status(500).json({
-          message: 'Error verifying email',
-          error: error.message
-      });
-  } finally {
-      if (connection) {
-          connection.release();
-      }
-  }
-});
+// Removed duplicate /verify-email route definition
 
 module.exports = router;
