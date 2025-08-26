@@ -10,7 +10,7 @@ const ActiveReservationModal = ({ reservation, onClose }) => {
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <div className="flex items-center mb-4">
           <Info className="h-6 w-6 text-blue-500 mr-2" />
-          <h3 className="text-lg font-semibold">Active Reservation Exists</h3>
+          <h3 className="text-lg font-semibold">Active Reservation</h3>
         </div>
         <p className="text-gray-600 mb-4">
           You already have an active reservation for:
