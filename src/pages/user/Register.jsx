@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   Mail, User, Phone, Lock, Eye, EyeOff, HelpCircle,
   UserCircle, Droplet, Calendar, MapPin, ChevronDown 
@@ -36,6 +36,8 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showBloodTypeInfo, setShowBloodTypeInfo] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   const JOHOR_AREAS = [
     "Johor Bahru", "Muar", "Batu Pahat", "Kluang", "Pontian",
@@ -57,27 +59,64 @@ const Register = () => {
       }));
     }
     if (error) setError('');
+    setTouched(prev => ({ ...prev, [name]: true }));
   };
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+  const phoneRegex = /^[0-9]{9,15}$/;
+
+  const isAdult = (isoDate) => {
+    if (!isoDate) return false;
+    const dob = new Date(isoDate);
+    if (Number.isNaN(dob.getTime())) return false;
+    const today = new Date();
+    const age = today.getFullYear() - dob.getFullYear() - ((today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) ? 1 : 0);
+    return age >= 18;
+  };
+
+  const currentFieldErrors = useMemo(() => {
+    const errs = {};
+    if (!formData.name || formData.name.trim().length < 2) errs.name = 'Enter your full name';
+    if (!emailRegex.test(formData.email)) errs.email = 'Enter a valid email';
+    if (!phoneRegex.test(formData.phone)) errs.phone = 'Enter a valid phone (9-15 digits)';
+    if (!isAdult(formData.dateOfBirth)) errs.dateOfBirth = 'You must be at least 18 years old';
+    if (!formData.gender) errs.gender = 'Select a gender';
+    if (!formData.area) errs.area = 'Select an area';
+    if (!formData.unknownBloodType && !formData.bloodType) errs.bloodType = 'Select a blood type or mark unknown';
+    const passwordIssues = validatePassword(formData.password);
+    if (passwordIssues.length > 0) errs.password = 'Password must be 8-20 chars with numbers and letters';
+    if (!formData.confirmPassword) errs.confirmPassword = 'Confirm your password';
+    if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) errs.confirmPassword = "Passwords don't match";
+    return errs;
+  }, [formData]);
+
+  const isFormValid = useMemo(() => Object.keys(currentFieldErrors).length === 0, [currentFieldErrors]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    const passwordErrors = validatePassword(formData.password);
-    if (passwordErrors.length > 0) {
-      setError("Password must be 8-20 characters and include letters and numbers");
-      return;
-    }
+    setTouched({
+      name: true,
+      email: true,
+      phone: true,
+      dateOfBirth: true,
+      gender: true,
+      area: true,
+      bloodType: true,
+      password: true,
+      confirmPassword: true,
+      unknownBloodType: true
+    });
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords don't match");
+    if (!isFormValid) {
+      setError('Please fix the highlighted fields');
       return;
     }
 
     try {
       setError('');
       setLoading(true);
-      
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const baseUrl = import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +150,7 @@ const Register = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           {/* Personal Information */}
           <div className="bg-gray-50 p-6 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
@@ -134,6 +173,9 @@ const Register = () => {
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
+                {touched.name && currentFieldErrors.name && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.name}</p>
+                )}
               </div>
 
               {/* Email Field */}
@@ -154,6 +196,9 @@ const Register = () => {
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
+                {touched.email && currentFieldErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.email}</p>
+                )}
               </div>
 
               {/* Phone Field */}
@@ -175,6 +220,9 @@ const Register = () => {
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
+                {touched.phone && currentFieldErrors.phone && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.phone}</p>
+                )}
               </div>
 
               {/* Date of Birth Field */}
@@ -195,6 +243,9 @@ const Register = () => {
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
+                {touched.dateOfBirth && currentFieldErrors.dateOfBirth && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.dateOfBirth}</p>
+                )}
               </div>
 
               {/* Gender Field */}
@@ -222,6 +273,9 @@ const Register = () => {
                     <ChevronDown className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
+                {touched.gender && currentFieldErrors.gender && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.gender}</p>
+                )}
               </div>
 
               {/* Area Field */}
@@ -249,6 +303,9 @@ const Register = () => {
                     <ChevronDown className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
+                {touched.area && currentFieldErrors.area && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.area}</p>
+                )}
               </div>
             </div>
           </div>
@@ -292,6 +349,9 @@ const Register = () => {
                     <ChevronDown className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
+                {!formData.unknownBloodType && touched.bloodType && currentFieldErrors.bloodType && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.bloodType}</p>
+                )}
               </div>
             )}
 
@@ -356,6 +416,9 @@ const Register = () => {
                 {formData.password && (
                   <PasswordStrengthIndicator password={formData.password} />
                 )}
+                {touched.password && currentFieldErrors.password && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.password}</p>
+                )}
               </div>
 
               <div>
@@ -375,6 +438,9 @@ const Register = () => {
                     required
                   />
                 </div>
+                {touched.confirmPassword && currentFieldErrors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{currentFieldErrors.confirmPassword}</p>
+                )}
               </div>
             </div>
           </div>
@@ -382,7 +448,7 @@ const Register = () => {
           <div className="flex flex-col items-center space-y-4">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isFormValid}
               className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 font-medium"
             >
               {loading ? (
