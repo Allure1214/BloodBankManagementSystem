@@ -19,6 +19,11 @@ const Navbar = () => {
     { path: '/register', label: 'Donor Registration', icon: <UserPlus className="w-5 h-5" /> },
   ];
 
+  // Hide Donor Registration when user is logged in
+  const visibleNavigationItems = user
+    ? navigationItems.filter((item) => item.path !== '/register')
+    : navigationItems;
+
   useEffect(() => {
     setMounted(true);
     const handleClickOutside = (event) => {
@@ -65,7 +70,7 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            {navigationItems.map((item, index) => (
+            {visibleNavigationItems.map((item, index) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -166,7 +171,7 @@ const Navbar = () => {
           }`}
         >
           <div className="flex flex-col p-4 space-y-2">
-            {navigationItems.map((item, index) => (
+            {visibleNavigationItems.map((item, index) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -190,7 +195,7 @@ const Navbar = () => {
             {user ? (
               <>
                 <div className="border-t border-gray-100 pt-2 animate-fade-in-up"
-                    style={{ animationDelay: `${navigationItems.length * 100}ms` }}>
+                    style={{ animationDelay: `${visibleNavigationItems.length * 100}ms` }}>
                 </div>
                 <Link
                   to="/user/dashboard"
@@ -199,7 +204,7 @@ const Navbar = () => {
                           hover:bg-red-50 hover:text-red-600 rounded-lg
                           transition-all duration-300 transform hover:scale-102
                           group animate-fade-in-up"
-                  style={{ animationDelay: `${(navigationItems.length + 1) * 100}ms` }}
+                  style={{ animationDelay: `${(visibleNavigationItems.length + 1) * 100}ms` }}
                 >
                   <User className="h-5 w-5 transition-transform duration-300 group-hover:rotate-12" />
                   <span>User Dashboard</span>
@@ -213,7 +218,7 @@ const Navbar = () => {
                           hover:bg-red-50 hover:text-red-600 rounded-lg w-full text-left
                           transition-all duration-300 transform hover:scale-102
                           group animate-fade-in-up"
-                  style={{ animationDelay: `${(navigationItems.length + 2) * 100}ms` }}
+                  style={{ animationDelay: `${(visibleNavigationItems.length + 2) * 100}ms` }}
                 >
                   <LogOut className="h-5 w-5 transition-transform duration-300 group-hover:rotate-12" />
                   <span>Logout</span>
@@ -226,7 +231,7 @@ const Navbar = () => {
                 className="flex justify-center px-4 py-3 bg-red-600 text-white rounded-lg 
                         hover:bg-red-700 transition-all duration-300 transform 
                         hover:scale-105 shadow-sm hover:shadow-md animate-fade-in-up"
-                style={{ animationDelay: `${(navigationItems.length + 1) * 100}ms` }}
+                style={{ animationDelay: `${(visibleNavigationItems.length + 1) * 100}ms` }}
               >
                 Login
               </Link>
