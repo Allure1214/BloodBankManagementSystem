@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line,
-  PieChart, Pie, Cell, ResponsiveContainer, Area, AreaChart
+  PieChart, Pie, Cell, ResponsiveContainer, Area, AreaChart, Label
 } from 'recharts';
 import { 
   Users, Droplet, TrendingUp, Calendar, Search, 
@@ -22,10 +22,14 @@ const BloodDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [filterArea, setFilterArea] = useState('');
   const [selectedBloodType, setSelectedBloodType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
+  const [hiddenTypes, setHiddenTypes] = useState(new Set());
 
   const COLORS = {
     'A+': '#ef4444',
@@ -46,6 +50,14 @@ const BloodDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Debounce search input -> searchTerm
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearchTerm(searchInput);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   const fetchDashboardData = async () => {
     try {
@@ -87,17 +99,65 @@ const BloodDashboard = () => {
     return fullYearData;
   };
 
-  const calculateTotalUnits = () => {
+  const totalUnits = useMemo(() => {
     if (!stats.bloodInventory) return 0;
     return Object.values(stats.bloodInventory)
       .reduce((sum, value) => sum + parseInt(value), 0);
-  };
+  }, [stats.bloodInventory]);
 
-  const formatInventoryData = () => {
+  const inventoryData = useMemo(() => {
     return Object.entries(stats.bloodInventory || {}).map(([type, value]) => ({
       name: type,
       value: parseInt(value)
     }));
+  }, [stats.bloodInventory]);
+
+  const visibleInventoryData = useMemo(() => {
+    return inventoryData.filter(item => !hiddenTypes.has(item.name));
+  }, [inventoryData, hiddenTypes]);
+
+  const toggleLegendItem = (type) => {
+    setHiddenTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  };
+
+  const sortedAndFilteredBanks = useMemo(() => {
+    const term = (searchTerm || '').toLowerCase();
+    const filtered = (stats.bloodBanks || []).filter(bank =>
+      bank.name.toLowerCase().includes(term) && (!filterArea || bank.area === filterArea)
+    );
+    const sorted = [...filtered].sort((a, b) => {
+      let comp = 0;
+      if (sortBy === 'name') comp = a.name.localeCompare(b.name);
+      else if (sortBy === 'area') comp = a.area.localeCompare(b.area);
+      else if (sortBy === 'total_units') comp = (a.total_units || 0) - (b.total_units || 0);
+      return sortDir === 'asc' ? comp : -comp;
+    });
+    return sorted;
+  }, [stats.bloodBanks, searchTerm, filterArea, sortBy, sortDir]);
+
+  const paginationMeta = useMemo(() => {
+    const totalItems = sortedAndFilteredBanks.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const startIndex = (safeCurrentPage - 1) * rowsPerPage;
+    const endIndex = Math.min(totalItems, safeCurrentPage * rowsPerPage);
+    const startItem = totalItems === 0 ? 0 : startIndex + 1;
+    const paginated = sortedAndFilteredBanks.slice(startIndex, startIndex + rowsPerPage);
+    return { totalItems, totalPages, safeCurrentPage, startItem, endIndex, paginated };
+  }, [sortedAndFilteredBanks, rowsPerPage, currentPage]);
+
+  const handleSort = (column) => {
+    setCurrentPage(1);
+    if (sortBy === column) {
+      setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -176,7 +236,7 @@ const BloodDashboard = () => {
           <StatCard 
             icon={(props) => <Droplet {...props} className="h-6 w-6 text-blue-600" />}
             title="Total Blood Units"
-            value={calculateTotalUnits().toLocaleString()}
+            value={totalUnits.toLocaleString()}
             trend={8}
             color="bg-blue-100"
           />
@@ -214,22 +274,42 @@ const BloodDashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={formatInventoryData()}
+                  data={visibleInventoryData}
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
                   cy="50%"
+                  innerRadius={60}
                   outerRadius={100}
-                  label
                 >
-                  {formatInventoryData().map((entry, index) => (
+                  {visibleInventoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[entry.name]} />
                   ))}
+                  <Label
+                    value={`${totalUnits} units`}
+                    position="center"
+                    style={{ fontSize: 12, fill: '#374151' }}
+                  />
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
-                <Legend />
               </PieChart>
             </ResponsiveContainer>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {inventoryData.map(item => {
+                const isHidden = hiddenTypes.has(item.name);
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => toggleLegendItem(item.name)}
+                    className={`flex items-center gap-2 px-3 py-1 rounded-full border text-sm ${isHidden ? 'opacity-50' : ''}`}
+                    aria-pressed={!isHidden}
+                  >
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[item.name] }} />
+                    <span>{item.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Monthly Donations Trend */}
@@ -275,7 +355,8 @@ const BloodDashboard = () => {
                     type="text"
                     placeholder="Search blood banks..."
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    value={searchInput}
+                    onChange={(e) => { setSearchInput(e.target.value); setCurrentPage(1); }}
                   />
                 </div>
                 <select
@@ -304,16 +385,25 @@ const BloodDashboard = () => {
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Blood Bank
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    Blood Bank {sortBy === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Area
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                    onClick={() => handleSort('area')}
+                  >
+                    Area {sortBy === 'area' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Units
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                    onClick={() => handleSort('total_units')}
+                  >
+                    Total Units {sortBy === 'total_units' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -321,19 +411,14 @@ const BloodDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(() => {
-                  const filteredBanks = (stats.bloodBanks || [])
-                    .filter(bank =>
-                      bank.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-                      (!filterArea || bank.area === filterArea)
-                    );
-
-                  const totalPages = Math.max(1, Math.ceil(filteredBanks.length / rowsPerPage));
-                  const safeCurrentPage = Math.min(currentPage, totalPages);
-                  const startIndex = (safeCurrentPage - 1) * rowsPerPage;
-                  const paginatedBanks = filteredBanks.slice(startIndex, startIndex + rowsPerPage);
-
-                  return paginatedBanks.map((bank) => (
+                {paginationMeta.paginated.length === 0 ? (
+                  <tr>
+                    <td className="px-6 py-8 text-center text-gray-500" colSpan={4}>
+                      No blood banks match your filters.
+                    </td>
+                  </tr>
+                ) : (
+                  paginationMeta.paginated.map((bank) => (
                     <tr key={bank.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -358,56 +443,41 @@ const BloodDashboard = () => {
                         </span>
                       </td>
                     </tr>
-                  ));
-                })()}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-          {(() => {
-            const filteredBanks = (stats.bloodBanks || [])
-              .filter(bank =>
-                bank.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-                (!filterArea || bank.area === filterArea)
-              );
-            const totalItems = filteredBanks.length;
-            const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage));
-            const safeCurrentPage = Math.min(currentPage, totalPages);
-            const startItem = totalItems === 0 ? 0 : (safeCurrentPage - 1) * rowsPerPage + 1;
-            const endItem = Math.min(totalItems, safeCurrentPage * rowsPerPage);
-
-            return (
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">
-                  Showing {startItem}-{endItem} of {totalItems}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="px-3 py-2 text-sm border rounded-lg disabled:opacity-50"
-                    disabled={safeCurrentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      className={`px-3 py-2 text-sm border rounded-lg ${page === safeCurrentPage ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700'}`}
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button
-                    className="px-3 py-2 text-sm border rounded-lg disabled:opacity-50"
-                    disabled={safeCurrentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              Showing {paginationMeta.startItem}-{paginationMeta.endIndex} of {paginationMeta.totalItems}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="px-3 py-2 text-sm border rounded-lg disabled:opacity-50"
+                disabled={paginationMeta.safeCurrentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              >
+                Previous
+              </button>
+              {Array.from({ length: paginationMeta.totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  className={`px-3 py-2 text-sm border rounded-lg ${page === paginationMeta.safeCurrentPage ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700'}`}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                className="px-3 py-2 text-sm border rounded-lg disabled:opacity-50"
+                disabled={paginationMeta.safeCurrentPage === paginationMeta.totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(paginationMeta.totalPages, prev + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
