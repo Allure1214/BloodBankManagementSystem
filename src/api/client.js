@@ -11,7 +11,8 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('token');
+    // Check both sessionStorage and localStorage for tokens
+    let token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -35,6 +36,8 @@ apiClient.interceptors.response.use(
   (error) => {
     console.error('Response error:', error);
     if (error.response?.status === 401) {
+      // Clear tokens from both storages on 401 response
+      sessionStorage.removeItem('token');
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

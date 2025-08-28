@@ -22,35 +22,53 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      // Check both sessionStorage and localStorage for tokens
+      let token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      
       if (token) {
-        // Add Bearer prefix when setting header
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('Token found, checking auth status...');
+        // Don't manually set headers - let the interceptor handle it
         const response = await apiClient.get('/auth/me');
         if (response.data.success) {
           setUser(response.data.user);
+          console.log('User authenticated:', response.data.user);
         }
+      } else {
+        console.log('No token found');
       }
     } catch (error) {
       console.error('Auth check failed:', error);
+      // Clear tokens from both storages on auth failure
       sessionStorage.removeItem('token');
-      delete apiClient.defaults.headers.common['Authorization'];
+      localStorage.removeItem('token');
       setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     try {
+      console.log('Logging in with rememberMe:', rememberMe);
       const response = await apiClient.post('/auth/login', { email, password });
       const { token, user: userData } = response.data;
       
-      // Ensure we store with Bearer prefix
-      sessionStorage.setItem('token', token); // Store raw token
-      // Set Bearer token in axios headers
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('Login successful, storing token...');
       
+      // Store token based on rememberMe preference
+      if (rememberMe) {
+        // Store in localStorage for persistent login
+        localStorage.setItem('token', token);
+        sessionStorage.removeItem('token'); // Clear session storage
+        console.log('Token stored in localStorage for persistent login');
+      } else {
+        // Store in sessionStorage for temporary login (cleared when browser closes)
+        sessionStorage.setItem('token', token);
+        localStorage.removeItem('token'); // Clear local storage
+        console.log('Token stored in sessionStorage for temporary login');
+      }
+      
+      // Don't manually set headers - let the interceptor handle it
       setUser(userData);
       return userData;
     } catch (error) {
@@ -60,12 +78,12 @@ export const AuthProvider = ({ children }) => {
   };  
 
   const logout = () => {
-    // Clear from sessionStorage instead of localStorage
+    console.log('Logging out, clearing tokens...');
+    // Clear from both storages
     sessionStorage.removeItem('token');
-    delete apiClient.defaults.headers.common['Authorization'];
+    localStorage.removeItem('token');
     setUser(null);
   };
-
 
   const updateUserProfile = (updatedData) => {
     setUser(prevUser => ({
