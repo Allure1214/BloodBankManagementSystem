@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
   Mail,
   Eye,
@@ -10,10 +11,12 @@ import {
   KeyRound,
   Info,
   Shield,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 
 const ResetPassword = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     newPassword: '',
@@ -113,7 +116,12 @@ const ResetPassword = () => {
 
         setSuccessMessage('Password reset successful!');
         setTimeout(() => {
-          window.location.href = '/login';
+          // Redirect based on authentication status
+          if (user) {
+            window.location.href = '/dashboard';
+          } else {
+            window.location.href = '/login';
+          }
         }, 2000);
       }
     } catch (error) {
@@ -146,7 +154,7 @@ const ResetPassword = () => {
             'bg-gray-100 ring-1 ring-gray-300'
           }`}>
             {step > index ? (
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <CheckCircle className="w-5 w-5 text-green-500" />
             ) : (
               <span className={`text-base font-semibold transition-colors duration-300 ${
                 step === index ? 'text-red-600' : 'text-gray-500'
@@ -219,6 +227,16 @@ const ResetPassword = () => {
     }
   };
 
+  const handleBackNavigation = () => {
+    if (user) {
+      // If user is authenticated, go back to dashboard
+      window.location.href = 'user/dashboard';
+    } else {
+      // If user is not authenticated, go back to login
+      window.location.href = '/login';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-pink-50 flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -279,7 +297,7 @@ const ResetPassword = () => {
               <div className="space-y-4">
                 <div className="space-y-3">
                   <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <KeyRound className="h-4 w-4 text-red-500" />
+                    <KeyRound className="h-4 h-4 text-red-500" />
                     Enter OTP Code
                   </label>
                   <div className="relative">
@@ -336,7 +354,7 @@ const ResetPassword = () => {
               <div className="space-y-4">
                 <div className="space-y-3">
                   <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Lock className="h-4 w-4 text-red-500" />
+                    <Lock className="h-4 h-4 text-red-500" />
                     New Password
                   </label>
                   <div className="relative group">
@@ -349,16 +367,16 @@ const ResetPassword = () => {
                       className="block w-full pl-10 pr-10 py-3 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 group-hover:border-gray-300"
                       placeholder="Enter new password"
                     />
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 h-4" />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 h-4" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -366,7 +384,7 @@ const ResetPassword = () => {
 
                 <div className="space-y-3">
                   <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Lock className="h-4 w-4 text-red-500" />
+                    <Lock className="h-4 h-4 text-red-500" />
                     Confirm Password
                   </label>
                   <div className="relative group">
@@ -379,7 +397,7 @@ const ResetPassword = () => {
                       className="block w-full pl-10 pr-3 py-3 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 group-hover:border-gray-300"
                       placeholder="Confirm new password"
                     />
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 h-4" />
                   </div>
                 </div>
 
@@ -408,10 +426,11 @@ const ResetPassword = () => {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => window.location.href = '/login'}
-                className="text-sm font-semibold text-red-600 hover:text-red-700 transition-colors duration-200"
+                onClick={handleBackNavigation}
+                className="text-sm font-semibold text-red-600 hover:text-red-700 transition-colors duration-200 flex items-center justify-center mx-auto"
               >
-                ← Back to login
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                {user ? 'Back to Dashboard' : 'Back to Login'}
               </button>
             </div>
           </form>
