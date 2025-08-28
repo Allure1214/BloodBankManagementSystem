@@ -37,6 +37,11 @@ const capitalizeFirstLetter = (string) => {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 };
 
+// Helper function to get token from either storage location
+const getAuthToken = () => {
+  return sessionStorage.getItem('token') || localStorage.getItem('token');
+};
+
 const UserDashboard = () => {
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState(null);
@@ -67,7 +72,7 @@ const UserDashboard = () => {
 
   const markNotificationAsRead = async (notificationId) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = getAuthToken();
       const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}/read`, {
         method: 'PUT',
         headers: {
@@ -91,7 +96,7 @@ const UserDashboard = () => {
   
   const markAllNotificationsAsRead = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = getAuthToken();
       const response = await fetch('http://localhost:5000/api/notifications/read-all', {
         method: 'PUT',
         headers: {
@@ -130,7 +135,7 @@ const UserDashboard = () => {
 
   const fetchNotifications = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = getAuthToken();
       const response = await fetch('http://localhost:5000/api/notifications', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -149,7 +154,7 @@ const UserDashboard = () => {
 
   const fetchUserData = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = getAuthToken();
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
