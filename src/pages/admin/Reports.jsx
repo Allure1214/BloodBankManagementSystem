@@ -1,32 +1,36 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/layout/AdminDashboardLayout';
+import { 
+  Activity, 
+  Droplet, 
+  Users, 
+  Calendar, 
+  Building2, 
+  TrendingUp, 
+  Download, 
+  Filter 
+} from 'lucide-react';
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area
+  ResponsiveContainer
 } from 'recharts';
-import {
-  Download,
-  Calendar,
-  TrendingUp,
-  Users,
-  Droplet,
-  Building2,
-  Activity,
-  Filter
-} from 'lucide-react';
-import AdminLayout from '../../components/layout/AdminDashboardLayout';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const Reports = () => {
   const [timeframe, setTimeframe] = useState('month');
@@ -66,8 +70,6 @@ const Reports = () => {
   useEffect(() => {
     fetchReportData();
   }, [timeframe, reportType]);
-
-  // Generate sample data for charts when real data is not available
   
 
   // Debug function to log data structure
@@ -464,9 +466,353 @@ const Reports = () => {
   };
 
   const exportReport = (format = 'pdf') => {
-    // Implementation for exporting reports
-    console.log(`Exporting ${reportType} report in ${format} format`);
-    // You can implement actual export functionality here
+    try {
+      if (format === 'excel') {
+        exportToExcel();
+      } else if (format === 'pdf') {
+        exportToPDF();
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const exportToExcel = () => {
+    const workbook = XLSX.utils.book_new();
+    
+    // Create different sheets based on report type
+    if (reportType === 'overview') {
+      // Overview sheet
+      const overviewData = [
+        ['Blood Bank Analytics Overview Report'],
+        ['Generated on:', new Date().toLocaleDateString()],
+        ['Timeframe:', timeframe],
+        [''],
+        ['Key Metrics'],
+        ['Total Donations', stats.totalDonations || 0],
+        ['Total Users', stats.totalUsers || 0],
+        ['Blood Banks', stats.totalBloodBanks || 0],
+        ['Active Campaigns', stats.activeCampaigns || 0],
+        ['Total Campaigns', stats.totalCampaigns || 0],
+        [''],
+        ['Blood Type Distribution']
+      ];
+      
+      if (data.bloodTypeDistribution && data.bloodTypeDistribution.length > 0) {
+        overviewData.push(['Blood Type', 'Available Units']);
+        data.bloodTypeDistribution.forEach(blood => {
+          overviewData.push([blood.name, blood.value]);
+        });
+      }
+      
+      const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData);
+      XLSX.utils.book_append_sheet(workbook, overviewSheet, 'Overview');
+    }
+    
+    if (reportType === 'donations' && data.campaignPerformance) {
+      // Donations sheet
+      const donationsData = [
+        ['Donation Performance Report'],
+        ['Generated on:', new Date().toLocaleDateString()],
+        ['Timeframe:', timeframe],
+        [''],
+        ['Campaign', 'Participants', 'Donations', 'Success Rate', 'Status']
+      ];
+      
+      data.campaignPerformance.forEach(campaign => {
+        donationsData.push([
+          campaign.campaign,
+          campaign.participants,
+          campaign.donations,
+          `${campaign.successRate}%`,
+          campaign.isActive ? 'Active' : 'Inactive'
+        ]);
+      });
+      
+      const donationsSheet = XLSX.utils.aoa_to_sheet(donationsData);
+      XLSX.utils.book_append_sheet(workbook, donationsSheet, 'Donations');
+    }
+    
+    if (reportType === 'users' && data.userDemographics) {
+      // Users sheet
+      const usersData = [
+        ['User Analytics Report'],
+        ['Generated on:', new Date().toLocaleDateString()],
+        ['Timeframe:', timeframe],
+        [''],
+        ['Total Users', stats.totalUsers || 0],
+        ['Campaign Participants', data.campaignPerformance?.reduce((sum, c) => sum + c.participants, 0) || 0],
+        [''],
+        ['Age Distribution']
+      ];
+      
+      if (data.userDemographics.ageDistribution) {
+        usersData.push(['Age Range', 'Count']);
+        data.userDemographics.ageDistribution.forEach(age => {
+          usersData.push([age.name, age.value]);
+        });
+      }
+      
+      usersData.push(['', '']);
+      usersData.push(['Gender Distribution']);
+      
+      if (data.userDemographics.genderDistribution) {
+        usersData.push(['Gender', 'Count']);
+        data.userDemographics.genderDistribution.forEach(gender => {
+          usersData.push([gender.name, gender.value]);
+        });
+      }
+      
+      const usersSheet = XLSX.utils.aoa_to_sheet(usersData);
+      XLSX.utils.book_append_sheet(workbook, usersSheet, 'Users');
+    }
+    
+    if (reportType === 'campaigns' && data.campaignPerformance) {
+      // Campaigns sheet
+      const campaignsData = [
+        ['Campaign Performance Report'],
+        ['Generated on:', new Date().toLocaleDateString()],
+        ['Timeframe:', timeframe],
+        [''],
+        ['Campaign', 'Participants', 'Donations', 'Success Rate', 'Status']
+      ];
+      
+      data.campaignPerformance.forEach(campaign => {
+        campaignsData.push([
+          campaign.campaign,
+          campaign.participants,
+          campaign.donations,
+          `${campaign.successRate}%`,
+          campaign.isActive ? 'Active' : 'Inactive'
+        ]);
+      });
+      
+      const campaignsSheet = XLSX.utils.aoa_to_sheet(campaignsData);
+      XLSX.utils.book_append_sheet(workbook, campaignsSheet, 'Campaigns');
+    }
+    
+    if (reportType === 'inventory' && data.bloodTypeDistribution) {
+      // Inventory sheet
+      const inventoryData = [
+        ['Blood Inventory Report'],
+        ['Generated on:', new Date().toLocaleDateString()],
+        ['Timeframe:', timeframe],
+        [''],
+        ['Blood Type', 'Available Units', 'Stock Level', 'Status', 'Priority']
+      ];
+      
+      data.bloodTypeDistribution.forEach(blood => {
+        const stockLevel = blood.value >= 10 ? 'Well Stocked' : blood.value >= 5 ? 'Moderate' : 'Low Stock';
+        const status = blood.value >= 10 ? 'Safe' : blood.value >= 5 ? 'Warning' : 'Critical';
+        const priority = blood.value < 5 ? 'High' : blood.value < 10 ? 'Medium' : 'Low';
+        
+        inventoryData.push([
+          blood.name,
+          blood.value,
+          stockLevel,
+          status,
+          priority
+        ]);
+      });
+      
+      const inventorySheet = XLSX.utils.aoa_to_sheet(inventoryData);
+      XLSX.utils.book_append_sheet(workbook, inventorySheet, 'Inventory');
+    }
+    
+    // Save the file
+    const fileName = `blood_bank_${reportType}_report_${timeframe}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let yPosition = 20;
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Blood Bank ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 20;
+    
+    // Date and timeframe
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, yPosition);
+    yPosition += 10;
+    doc.text(`Timeframe: ${timeframe}`, margin, yPosition);
+    yPosition += 20;
+    
+    // Content based on report type
+    if (reportType === 'overview') {
+      // Overview content
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Key Metrics', margin, yPosition);
+      yPosition += 15;
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      const metrics = [
+        ['Total Donations', stats.totalDonations || 0],
+        ['Total Users', stats.totalUsers || 0],
+        ['Blood Banks', stats.totalBloodBanks || 0],
+        ['Active Campaigns', stats.activeCampaigns || 0],
+        ['Total Campaigns', stats.totalCampaigns || 0]
+      ];
+      
+      metrics.forEach(([label, value]) => {
+        doc.text(`${label}: ${value.toLocaleString()}`, margin, yPosition);
+        yPosition += 8;
+      });
+      
+      yPosition += 10;
+      
+      // Blood type distribution table
+      if (data.bloodTypeDistribution && data.bloodTypeDistribution.length > 0) {
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Blood Type Distribution', margin, yPosition);
+        yPosition += 15;
+        
+        const tableData = [['Blood Type', 'Available Units']];
+        data.bloodTypeDistribution.forEach(blood => {
+          tableData.push([blood.name, blood.value.toString()]);
+        });
+        
+        doc.autoTable({
+          startY: yPosition,
+          head: [tableData[0]],
+          body: tableData.slice(1),
+          margin: { left: margin },
+          styles: { fontSize: 10 }
+        });
+      }
+    }
+    
+    if (reportType === 'donations' && data.campaignPerformance) {
+      // Donations content
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Donation Performance', margin, yPosition);
+      yPosition += 15;
+      
+      const tableData = [['Campaign', 'Participants', 'Donations', 'Success Rate', 'Status']];
+      data.campaignPerformance.forEach(campaign => {
+        tableData.push([
+          campaign.campaign,
+          campaign.participants.toString(),
+          campaign.donations.toString(),
+          `${campaign.successRate}%`,
+          campaign.isActive ? 'Active' : 'Inactive'
+        ]);
+      });
+      
+      doc.autoTable({
+        startY: yPosition,
+        head: [tableData[0]],
+        body: tableData.slice(1),
+        margin: { left: margin },
+        styles: { fontSize: 8 }
+      });
+    }
+    
+    if (reportType === 'users' && data.userDemographics) {
+      // Users content
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('User Analytics', margin, yPosition);
+      yPosition += 15;
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Users: ${stats.totalUsers || 0}`, margin, yPosition);
+      yPosition += 10;
+      
+      if (data.userDemographics.ageDistribution) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Age Distribution', margin, yPosition);
+        yPosition += 10;
+        
+        const ageData = [['Age Range', 'Count']];
+        data.userDemographics.ageDistribution.forEach(age => {
+          ageData.push([age.name, age.value.toString()]);
+        });
+        
+        doc.autoTable({
+          startY: yPosition,
+          head: [ageData[0]],
+          body: ageData.slice(1),
+          margin: { left: margin },
+          styles: { fontSize: 10 }
+        });
+      }
+    }
+    
+    if (reportType === 'campaigns' && data.campaignPerformance) {
+      // Campaigns content
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Campaign Performance', margin, yPosition);
+      yPosition += 15;
+      
+      const tableData = [['Campaign', 'Participants', 'Donations', 'Success Rate', 'Status']];
+      data.campaignPerformance.forEach(campaign => {
+        tableData.push([
+          campaign.campaign,
+          campaign.participants.toString(),
+          campaign.donations.toString(),
+          `${campaign.successRate}%`,
+          campaign.isActive ? 'Active' : 'Inactive'
+        ]);
+      });
+      
+      doc.autoTable({
+        startY: yPosition,
+        head: [tableData[0]],
+        body: tableData.slice(1),
+        margin: { left: margin },
+        styles: { fontSize: 8 }
+      });
+    }
+    
+    if (reportType === 'inventory' && data.bloodTypeDistribution) {
+      // Inventory content
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Blood Inventory Status', margin, yPosition);
+      yPosition += 15;
+      
+      const tableData = [['Blood Type', 'Available Units', 'Stock Level', 'Status', 'Priority']];
+      data.bloodTypeDistribution.forEach(blood => {
+        const stockLevel = blood.value >= 10 ? 'Well Stocked' : blood.value >= 5 ? 'Moderate' : 'Low Stock';
+        const status = blood.value >= 10 ? 'Safe' : blood.value >= 5 ? 'Warning' : 'Critical';
+        const priority = blood.value < 5 ? 'High' : blood.value < 10 ? 'Medium' : 'Low';
+        
+        tableData.push([
+          blood.name,
+          blood.value.toString(),
+          stockLevel,
+          status,
+          priority
+        ]);
+      });
+      
+      doc.autoTable({
+        startY: yPosition,
+        head: [tableData[0]],
+        body: tableData.slice(1),
+        margin: { left: margin },
+        styles: { fontSize: 9 }
+      });
+    }
+    
+    // Save the file
+    const fileName = `blood_bank_${reportType}_report_${timeframe}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
   };
 
   const TimeframeSelector = () => (
