@@ -159,10 +159,12 @@ router.get('/dashboard', async (req, res) => {
       totalDonationsResult,
       bloodBanksResult,
       activeCampaignsResult,
+      totalCampaignsResult,
       donationTrendsResult,
       bloodTypeDistributionResult,
       recentActivitiesResult,
-      pendingAppointmentsResult
+      pendingAppointmentsResult,
+      usersResult
     ] = await Promise.all([
       // Total Users
       connection.query(
@@ -186,9 +188,14 @@ router.get('/dashboard', async (req, res) => {
         JOIN campaign_sessions cs ON c.id = cs.campaign_id 
         WHERE cs.date >= CURDATE() AND cs.status = 'scheduled'`
       ),
-    
-    connection.query(getDonationTrendsQuery(timeframe)),
 
+      // Total Campaigns (all campaigns in system)
+      connection.query(
+        `SELECT COUNT(*) as total FROM campaigns`
+      ),
+
+      // Donation Trends
+      connection.query(getDonationTrendsQuery(timeframe)),
 
       // Blood Type Distribution from Current Inventory
       connection.query(
@@ -249,6 +256,20 @@ router.get('/dashboard', async (req, res) => {
          WHERE cr.status = 'pending'
          ORDER BY cr.session_date, cr.preferred_time
          `
+      ),
+
+      // All Users for Growth Trends (only regular users, not admins)
+      connection.query(
+        `SELECT 
+          id,
+          name,
+          email,
+          role,
+          status,
+          created_at
+         FROM users 
+         WHERE role = 'user'
+         ORDER BY created_at ASC`
       )
     ]);
 
@@ -298,12 +319,14 @@ router.get('/dashboard', async (req, res) => {
         totalDonations: currentStats.donations,
         totalBloodBanks: currentStats.bloodBanks,
         activeCampaigns: currentStats.activeCampaigns,
+        totalCampaigns: totalCampaignsResult[0][0].total,
         userGrowth: growth.userGrowth,
         donationGrowth: growth.donationGrowth,
         donationTrends: donationTrendsResult[0],
         bloodTypeDistribution: bloodTypeDistributionResult[0],
         recentActivities: recentActivitiesResult[0],
-        pendingAppointments: pendingAppointmentsResult[0]
+        pendingAppointments: pendingAppointmentsResult[0],
+        users: usersResult[0]
       }
     });
 

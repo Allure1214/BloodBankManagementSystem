@@ -15,6 +15,7 @@ import {
   Droplet,
   ClipboardList,
   ChevronDown,
+  Activity,
   ShieldCheck,
   UserCircle
 } from 'lucide-react';
@@ -120,6 +121,12 @@ const AdminDashboardLayout = ({ children }) => {
         icon: ClipboardList,
         path: '/admin/appointments',
         requiredPermission: 'can_manage_appointments'
+      },
+      {
+        title: 'Reports',
+        icon: Activity,
+        path: '/admin/reports',
+        requiredPermission: 'can_manage_report',
       }
     ];
   

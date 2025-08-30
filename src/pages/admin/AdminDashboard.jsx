@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Building2,
@@ -44,6 +45,7 @@ const TimeframeSelector = ({ value, onChange }) => (
 );
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalDonations: 0,
@@ -131,6 +133,12 @@ const AdminDashboard = () => {
                   return String(label);
               }
             }}
+            contentStyle={{
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
           />
           <Legend />
           <Line
@@ -148,41 +156,45 @@ const AdminDashboard = () => {
   };
 
   const StatCard = ({ icon: Icon, title, value, change, timeframe, bgColor, iconColor }) => (
-  <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 relative overflow-hidden">
-    {/* Animated background gradient */}
-    <div className={`absolute inset-0 opacity-5 transition-opacity group-hover:opacity-10`}>
+  <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 p-6 relative overflow-hidden group border border-gray-100">
+    {/* Enhanced background gradient */}
+    <div className={`absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity duration-300`}>
       <div className={`w-full h-full ${bgColor} transform rotate-12 translate-x-1/2 translate-y-1/2`} />
     </div>
     
     {/* Content */}
     <div className="flex items-center relative z-10">
-      <div className={`p-3 ${bgColor} bg-opacity-10 rounded-lg`}>
+      <div className={`p-3 ${bgColor} bg-opacity-10 rounded-xl group-hover:scale-110 transition-transform duration-300`}>
         <Icon className={`h-6 w-6 ${iconColor}`} />
       </div>
       <div className="ml-4">
-        <p className="text-sm text-gray-500">{title}</p>
-        <h3 className="text-xl font-bold text-gray-900">
+        <p className="text-sm font-medium text-gray-600">{title}</p>
+        <h3 className="text-2xl font-bold text-gray-900">
           {typeof value === 'number' ? value.toLocaleString() : value}
         </h3>
       </div>
     </div>
     
-    {/* Growth/Change indicator */}
+    {/* Enhanced growth indicator */}
     {change !== undefined && (
       <div className="mt-4 flex items-center text-sm">
         {change === 0 ? (
-          <span className="text-gray-500">No change during current {timeframe}</span>
+          <span className="text-gray-500 flex items-center">
+            <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+            No change during current {timeframe}
+          </span>
         ) : (
-          <>
-            <span 
-              className={`inline-flex items-center ${
-                change > 0 ? 'text-green-500' : 'text-red-500'
-              }`}
-            >
-              {change > 0 ? '↑' : '↓'} {Math.abs(change)}%
-              <span className="ml-1 text-gray-400">from last {timeframe}</span>
-            </span>
-          </>
+          <span 
+            className={`inline-flex items-center font-medium ${
+              change > 0 ? 'text-green-600' : 'text-red-600'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full mr-2 ${
+              change > 0 ? 'bg-green-500' : 'bg-red-500'
+            }`}></span>
+            {change > 0 ? '+' : ''}{change}%
+            <span className="ml-1 text-gray-400 font-normal">from last {timeframe}</span>
+          </span>
         )}
       </div>
     )}
@@ -208,7 +220,7 @@ const AdminDashboard = () => {
         <button
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
         >
           Previous
         </button>
@@ -217,10 +229,10 @@ const AdminDashboard = () => {
           <button
             key={index + 1}
             onClick={() => handlePageChange(index + 1)}
-            className={`px-3 py-1 border rounded-md text-sm 
+            className={`px-3 py-2 border rounded-lg text-sm font-medium transition-all duration-200
               ${currentPage === index + 1 
-                ? 'bg-red-600 text-white border-red-600' 
-                : 'hover:bg-gray-50'}`}
+                ? 'bg-red-600 text-white border-red-600 shadow-sm' 
+                : 'border-gray-300 hover:bg-gray-50 hover:border-gray-400'}`}
           >
             {index + 1}
           </button>
@@ -229,7 +241,7 @@ const AdminDashboard = () => {
         <button
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 hover:border-gray-400 transition-colors duration-200"
         >
           Next
         </button>
@@ -309,6 +321,33 @@ const AdminDashboard = () => {
     });
   };
 
+  // Quick Actions Navigation Functions
+  const handleQuickAction = (action) => {
+    // Add a small delay for better UX feedback
+    const button = event.target.closest('button');
+    if (button) {
+      button.classList.add('scale-95');
+      setTimeout(() => button.classList.remove('scale-95'), 150);
+    }
+
+    switch (action) {
+      case 'users':
+        navigate('/admin/users');
+        break;
+      case 'inventory':
+        navigate('/admin/inventory');
+        break;
+      case 'campaigns':
+        navigate('/admin/campaigns');
+        break;
+      case 'reports':
+        navigate('/admin/reports');
+        break;
+      default:
+        break;
+    }
+  };
+
   if (loading) {
     return (
       <AdminLayout>
@@ -368,16 +407,16 @@ const AdminDashboard = () => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-          <h2 className="text-lg font-semibold mb-4">Donation Trends</h2>
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300 border border-gray-100">
+          <h2 className="text-lg font-semibold mb-4 text-gray-900">Donation Trends</h2>
           <DonationTrendsChart 
             data={stats.donationTrends}
             timeframe={timeframe}
           />
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-          <h2 className="text-lg font-semibold mb-4">Blood Type Distribution</h2>
+        <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-300 border border-gray-100">
+          <h2 className="text-lg font-semibold mb-4 text-gray-900">Blood Type Distribution</h2>
           <div className="flex flex-col">
             <div className="h-[300px] w-full">
               {stats.bloodTypeDistribution && stats.bloodTypeDistribution.length > 0 ? (
@@ -412,40 +451,40 @@ const AdminDashboard = () => {
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-gray-500">No Blood Inventory Data Available</p>
-              </div>
-            )}
-        </div>
-      
-      {/* Total Units List */}
-      {stats.bloodTypeDistribution && stats.bloodTypeDistribution.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-sm mb-4">Total Units by Blood Type</h3>
-          <div className="grid grid-cols-4 gap-4">
-            {stats.bloodTypeDistribution.map((blood) => (
-              <div key={blood.name} className="flex items-center space-x-2">
-                <div 
-                  className="w-2 h-2 rounded-full" 
-                  style={{ backgroundColor: BLOOD_COLORS[blood.name] }}
-                />
-                <div className="text-sm">
-                  <span className="text-gray-600">{blood.name}: </span>
-                  <span>{blood.value} Units</span>
                 </div>
-              </div>
-              ))}
+              )}
+            </div>
+          
+          {/* Total Units List */}
+          {stats.bloodTypeDistribution && stats.bloodTypeDistribution.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm mb-4">Total Units by Blood Type</h3>
+              <div className="grid grid-cols-4 gap-4">
+                {stats.bloodTypeDistribution.map((blood) => (
+                  <div key={blood.name} className="flex items-center space-x-2">
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: BLOOD_COLORS[blood.name] }}
+                    />
+                    <div className="text-sm">
+                      <span className="text-gray-600">{blood.name}: </span>
+                      <span>{blood.value} Units</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
+          </div>
         </div>
-      </div>
       </div>
 
       {/* Pending Appointments and Recent Activities */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* Pending Appointments */}
-        <div className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-100">
           <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Pending Appointments</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Pending Appointments</h2>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Show</span>
               <select
@@ -468,24 +507,42 @@ const AdminDashboard = () => {
               <div className="space-y-4">
                 {getPaginatedData(stats.pendingAppointments, appointmentsPage, appointmentsPerPage)
                   .map((appointment) => (
-                  <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{appointment.donorName}</h3>
-                      <p className="text-sm text-gray-600">
-                        {appointment.bloodType} • {formatDate(appointment.date)} • {appointment.time}
+                  <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-transparent hover:border-gray-200">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{appointment.donorName}</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        <span className="inline-flex items-center">
+                          <Droplet className="w-4 h-4 mr-1 text-red-500" />
+                          {appointment.bloodType}
+                        </span>
+                        <span className="mx-2">•</span>
+                        <span className="inline-flex items-center">
+                          <Calendar className="w-4 h-4 mr-1 text-blue-500" />
+                          {formatDate(appointment.date)}
+                        </span>
+                        <span className="mx-2">•</span>
+                        <span className="inline-flex items-center">
+                          <Clock className="w-4 h-4 mr-1 text-green-500" />
+                          {appointment.time}
+                        </span>
                       </p>
-                      <p className="text-xs text-gray-500">{appointment.campaign_location}</p>
+                      <p className="text-xs text-gray-500 mt-1 flex items-center">
+                        <Building2 className="w-3 h-3 mr-1" />
+                        {appointment.campaign_location}
+                      </p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 ml-4">
                       <button
                         onClick={() => handleAppointmentAction(appointment.id, 'confirm')}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-full"
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors duration-200 hover:scale-110"
+                        title="Confirm Appointment"
                       >
                         <Check className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => handleAppointmentAction(appointment.id, 'cancel')}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors duration-200 hover:scale-110"
+                        title="Cancel Appointment"
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -503,15 +560,21 @@ const AdminDashboard = () => {
                 />
               </div>
             ) : (
-              <p className="text-center text-gray-500">No Pending Appointments</p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 text-gray-300">
+                  <Calendar className="w-full h-full" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Appointments</h3>
+                <p className="text-gray-500">All appointments have been processed. Great job!</p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Recent Activities */}
-        <div className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-100">
           <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Recent Activities</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Recent Activities</h2>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Show</span>
               <select
@@ -571,12 +634,15 @@ const AdminDashboard = () => {
                   activitiesPage,
                   activitiesPerPage
                 ).map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm text-gray-900">{activity.description}</p>
-                      <p className="text-xs text-gray-500">{formatDate(activity.date)}</p>
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-transparent hover:border-gray-200">
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900 font-medium">{activity.description}</p>
+                      <p className="text-xs text-gray-500 mt-1 flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {formatDate(activity.date)}
+                      </p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full
+                    <span className={`px-3 py-1 text-xs font-medium rounded-full ml-4
                       ${activity.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                         activity.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         activity.status === 'cancelled' ? 'bg-red-100 text-red-800' :
@@ -594,12 +660,15 @@ const AdminDashboard = () => {
                   activitiesPage,
                   activitiesPerPage
                 ).map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm text-gray-900">{activity.description}</p>
-                      <p className="text-xs text-gray-500">{formatDate(activity.date)}</p>
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-transparent hover:border-gray-200">
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900 font-medium">{activity.description}</p>
+                      <p className="text-xs text-gray-500 mt-1 flex items-center">
+                        <Droplet className="w-3 h-3 mr-1" />
+                        {formatDate(activity.date)}
+                      </p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full
+                    <span className={`px-3 py-1 text-xs font-medium rounded-full ml-4
                       ${activity.status === 'Completed' ? 'bg-green-100 text-green-800' :
                         activity.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'}`}
@@ -645,6 +714,41 @@ const AdminDashboard = () => {
               </p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mt-6 border border-gray-100">
+        <h2 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button 
+            onClick={() => handleQuickAction('users')}
+            className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-all duration-200 group cursor-pointer active:scale-95"
+          >
+            <Users className="w-8 h-8 text-red-600 mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium text-gray-700 group-hover:text-red-700 transition-colors">Manage Users</span>
+          </button>
+          <button 
+            onClick={() => handleQuickAction('inventory')}
+            className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group cursor-pointer active:scale-95"
+          >
+            <Droplet className="w-8 h-8 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700 transition-colors">View Inventory</span>
+          </button>
+          <button 
+            onClick={() => handleQuickAction('campaigns')}
+            className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-all duration-200 group cursor-pointer active:scale-95"
+          >
+            <Calendar className="w-8 h-8 text-green-600 mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium text-gray-700 group-hover:text-green-700 transition-colors">Create Campaign</span>
+          </button>
+          <button 
+            onClick={() => handleQuickAction('reports')}
+            className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 group cursor-pointer active:scale-95"
+          >
+            <Activity className="w-8 h-8 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700 transition-colors">View Reports</span>
+          </button>
         </div>
       </div>
     </AdminLayout>

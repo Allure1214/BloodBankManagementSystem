@@ -40,6 +40,7 @@ import DonationManagement from './pages/admin/DonationManagement';
 import AppointmentManagement from './pages/admin/AppointmentManagement';
 import NotificationManagement from './pages/admin/NotificationManagement';
 import SettingsPage from './pages/admin/PermissionSetting.jsx';
+import Reports from './pages/admin/Reports';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -107,6 +108,7 @@ function App() {
                 <Route path="/admin/donations" element={<AdminRoute requiredPermission="can_manage_donations"><DonationManagement /></AdminRoute>} />
                 <Route path="/admin/appointments" element={<AdminRoute requiredPermission="can_manage_appointments"><AppointmentManagement /></AdminRoute>} />
                 <Route path="/admin/notifications" element={<AdminRoute><NotificationManagement /></AdminRoute>} />
+                <Route path="/admin/reports" element={<AdminRoute><Reports /></AdminRoute>} />
                 <Route path="/register" element={<Register />} />
               </Routes>
             </main>

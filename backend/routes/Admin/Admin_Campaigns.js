@@ -326,6 +326,52 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Get all campaign reservations for analytics
+router.get('/reservations', authMiddleware, checkPermission('can_manage_campaigns'), async (req, res) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    
+    const [reservations] = await connection.query(
+      `SELECT 
+        cr.id,
+        cr.campaign_id,
+        cr.user_id,
+        cr.name,
+        cr.email,
+        cr.phone,
+        cr.blood_type,
+        cr.preferred_time,
+        cr.session_date,
+        cr.status,
+        cr.created_at,
+        cr.updated_at,
+        cr.donation_completed,
+        cr.donation_completed_date,
+        cr.next_eligible_date,
+        c.location as campaign_location,
+        c.organizer as campaign_organizer
+      FROM campaign_reservations cr
+      JOIN campaigns c ON cr.campaign_id = c.id
+      ORDER BY cr.created_at DESC`
+    );
+
+    res.json({
+      success: true,
+      data: reservations
+    });
+
+  } catch (error) {
+    console.error('Error fetching campaign reservations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch campaign reservations'
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // Get campaign details
 router.get('/:id', authMiddleware, async (req, res) => {
   let connection;

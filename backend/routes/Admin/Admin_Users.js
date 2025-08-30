@@ -94,6 +94,69 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// Get user profiles for demographics
+router.get('/profiles', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'superadmin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied: Super Admin Only'
+    });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    // First, let's check what tables exist
+    const [tables] = await connection.query('SHOW TABLES LIKE "user_profiles"');
+    
+    if (tables.length === 0) {
+      // Try alternative table names
+      const [altTables] = await connection.query('SHOW TABLES LIKE "%profile%"');
+      console.log('Alternative profile tables found:', altTables);
+      
+      if (altTables.length === 0) {
+        return res.json({
+          success: true,
+          data: [],
+          message: 'No user profile table found'
+        });
+      }
+    }
+    
+    const [profiles] = await connection.query(
+      `SELECT 
+        up.id,
+        up.user_id,
+        up.blood_type,
+        up.date_of_birth,
+        up.gender,
+        up.area,
+        up.notification_preference,
+        u.name,
+        u.email,
+        u.created_at
+       FROM user_profiles up
+       JOIN users u ON up.user_id = u.id
+       WHERE up.date_of_birth IS NOT NULL 
+         AND up.gender IS NOT NULL 
+         AND up.gender != 'NULL'
+       ORDER BY u.created_at DESC`
+    );
+    
+    res.json({
+      success: true,
+      data: profiles
+    });
+  } catch (error) {
+    console.error('Error fetching user profiles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch user profiles'
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // Update user
 router.put('/:id', authMiddleware, async (req, res) => {
   let connection;
