@@ -301,7 +301,8 @@ router.get('/permissions', async (req, res) => {
           can_manage_campaigns: true,
           can_manage_blood_banks: true,
           can_manage_donations: true,
-          can_manage_appointments: true
+          can_manage_appointments: true,
+          can_manage_reports: true
         }
       });
     }

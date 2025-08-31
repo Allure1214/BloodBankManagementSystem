@@ -29,7 +29,8 @@ router.get('/normal-admins', authMiddleware, async (req, res) => {
         ap.can_manage_campaigns,
         ap.can_manage_blood_banks,
         ap.can_manage_donations,
-        ap.can_manage_appointments
+        ap.can_manage_appointments,
+        ap.can_manage_reports
       FROM users u
       LEFT JOIN admin_permissions ap ON u.id = ap.user_id
       WHERE u.role = 'admin'
@@ -47,7 +48,8 @@ router.get('/normal-admins', authMiddleware, async (req, res) => {
         can_manage_campaigns: Boolean(admin.can_manage_campaigns),
         can_manage_blood_banks: Boolean(admin.can_manage_blood_banks),
         can_manage_donations: Boolean(admin.can_manage_donations),
-        can_manage_appointments: Boolean(admin.can_manage_appointments)
+        can_manage_appointments: Boolean(admin.can_manage_appointments),
+        can_manage_reports: Boolean(admin.can_manage_reports)
       }
     }));
 

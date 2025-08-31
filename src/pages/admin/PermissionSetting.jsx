@@ -13,7 +13,8 @@ import {
   Ban,
   Mail,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  BarChart3
 } from 'lucide-react';
 
 
@@ -36,6 +37,7 @@ const SettingsPage = () => {
     { key: 'can_manage_blood_banks', icon: <Building2 className="w-4 h-4" />, label: 'Manage Blood Banks' },
     { key: 'can_manage_donations', icon: <Droplet className="w-4 h-4" />, label: 'Manage Donations' },
     { key: 'can_manage_appointments', icon: <ClipboardList className="w-4 h-4" />, label: 'Manage Appointments' },
+    { key: 'can_manage_reports', icon: <BarChart3 className="w-4 h-4" />, label: 'Manage Reports' },
   ];
 
   useEffect(() => {

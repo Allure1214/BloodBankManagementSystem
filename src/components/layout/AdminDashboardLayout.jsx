@@ -126,7 +126,7 @@ const AdminDashboardLayout = ({ children }) => {
         title: 'Reports',
         icon: Activity,
         path: '/admin/reports',
-        requiredPermission: 'can_manage_report',
+        requiredPermission: 'can_manage_reports',
       }
     ];
   
