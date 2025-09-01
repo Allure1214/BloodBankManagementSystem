@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Activity,
   ShieldCheck,
-  UserCircle
+  UserCircle,
+  MessageSquare
 } from 'lucide-react';
 
 const SidebarLink = ({ icon: Icon, title, path, isActive }) => (
@@ -138,6 +139,7 @@ const AdminDashboardLayout = ({ children }) => {
     });
   
     const commonItems = [
+      { title: 'Messages', icon: MessageSquare, path: '/admin/messages' },
       { title: 'Notifications', icon: Bell, path: '/admin/notifications' }
     ];
   

@@ -39,6 +39,7 @@ import CampaignManagement from './pages/admin/CampaignManagement';
 import DonationManagement from './pages/admin/DonationManagement';
 import AppointmentManagement from './pages/admin/AppointmentManagement';
 import NotificationManagement from './pages/admin/NotificationManagement';
+import MessageManagement from './pages/admin/MessageManagement';
 import SettingsPage from './pages/admin/PermissionSetting.jsx';
 import Reports from './pages/admin/Reports';
 
@@ -108,6 +109,7 @@ function App() {
                 <Route path="/admin/donations" element={<AdminRoute requiredPermission="can_manage_donations"><DonationManagement /></AdminRoute>} />
                 <Route path="/admin/appointments" element={<AdminRoute requiredPermission="can_manage_appointments"><AppointmentManagement /></AdminRoute>} />
                 <Route path="/admin/notifications" element={<AdminRoute><NotificationManagement /></AdminRoute>} />
+                <Route path="/admin/messages" element={<AdminRoute><AdminDashboardLayout><MessageManagement /></AdminDashboardLayout></AdminRoute>} />
                 <Route path="/admin/reports" element={<AdminRoute requiredPermission="can_manage_reports"><Reports /></AdminRoute>} />
                 <Route path="/register" element={<Register />} />
               </Routes>

@@ -164,7 +164,11 @@ async function initializeDatabase() {
         subject VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        status ENUM('New', 'Read', 'Replied') DEFAULT 'New'
+        status ENUM('New', 'Read', 'Replied') DEFAULT 'New',
+        admin_response TEXT,
+        responded_at TIMESTAMP NULL,
+        responded_by INT,
+        FOREIGN KEY (responded_by) REFERENCES users(id) ON DELETE SET NULL
       )
     `);
 

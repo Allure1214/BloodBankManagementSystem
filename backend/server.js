@@ -53,6 +53,7 @@ app.use('/api/admin/donations', require('./routes/Admin/Admin_Donations'));
 app.use('/api/appointment', require('./routes/Admin/Admin_Appointments'));
 app.use('/api/admin/notifications', require('./routes/Admin/Admin_Notifications'));
 app.use('/api/admin/permission', require('./routes/Admin/Admin_Permission'));
+app.use('/api/admin', require('./routes/Admin/Admin_Messages'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
