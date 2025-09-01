@@ -22,10 +22,12 @@ async function initializeDatabase() {
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         phone VARCHAR(15),
-        role ENUM('user', 'admin') DEFAULT 'user',
+        role ENUM('user', 'admin', 'superadmin') DEFAULT 'user',
         status ENUM('active', 'inactive') DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        reset_token TEXT,
+        reset_token_expires TIMESTAMP NULL
       )
     `);
 
@@ -37,9 +39,8 @@ async function initializeDatabase() {
         blood_type ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'),
         date_of_birth DATE,
         gender ENUM('male', 'female', 'other'),
-        address TEXT,
-        last_donation_date DATE,
-        medical_conditions TEXT,
+        area VARCHAR(100),
+        notification_preference ENUM('receiveAll', 'receiveImportant', 'receiveNone') DEFAULT 'receiveAll',
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
@@ -77,6 +78,106 @@ async function initializeDatabase() {
         can_manage_users BOOLEAN DEFAULT FALSE,
         can_manage_inventory BOOLEAN DEFAULT FALSE,
         can_manage_campaigns BOOLEAN DEFAULT FALSE,
+        can_manage_blood_banks BOOLEAN DEFAULT FALSE,
+        can_manage_donations BOOLEAN DEFAULT FALSE,
+        can_manage_appointments BOOLEAN DEFAULT FALSE,
+        can_manage_reports BOOLEAN DEFAULT FALSE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create Campaigns table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS campaigns (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        location VARCHAR(255) NOT NULL,
+        organizer VARCHAR(255) NOT NULL,
+        address TEXT NOT NULL,
+        latitude DECIMAL(10, 8),
+        longitude DECIMAL(11, 8),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create Campaign Sessions table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS campaign_sessions (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        campaign_id INT NOT NULL,
+        date DATE NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        status ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create Campaign Reservations table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS campaign_reservations (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        campaign_id INT NOT NULL,
+        user_id INT NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        phone VARCHAR(15) NOT NULL,
+        blood_type ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'UNKNOWN'),
+        preferred_time TIME NOT NULL,
+        session_date DATE NOT NULL,
+        status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        donation_completed BOOLEAN DEFAULT FALSE,
+        donation_completed_date DATE,
+        next_eligible_date DATE,
+        FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create Donations table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS donations (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        donor_id INT NOT NULL,
+        blood_bank_id INT NOT NULL,
+        donation_date DATE NOT NULL,
+        blood_type ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-') NOT NULL,
+        quantity_ml INT NOT NULL,
+        status ENUM('Pending', 'Completed', 'Cancelled') DEFAULT 'Pending',
+        health_screening_notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (donor_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (blood_bank_id) REFERENCES blood_banks(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create Messages table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status ENUM('New', 'Read', 'Replied') DEFAULT 'New'
+      )
+    `);
+
+    // Create Notifications table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type ENUM('info', 'success', 'warning', 'error') DEFAULT 'info',
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
