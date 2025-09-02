@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Plus, Edit, Trash, Clock, Search, Eye, X, Filter, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, MapPin, Plus, Edit, Trash, Clock, Search, Eye, X, Filter, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Navigation, Map } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
 
 const CampaignManagement = () => {
@@ -19,6 +19,20 @@ const CampaignManagement = () => {
     const [selectedOrganizer, setSelectedOrganizer] = useState('all');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
+    const addressInputRef = useRef(null);
+
+
+
+
+
+
+
+
+
+
+
+
 
     
 
@@ -124,6 +138,79 @@ const CampaignManagement = () => {
     const CampaignModal = ({ onClose }) => {
         const [formErrors, setFormErrors] = useState({});
         const [isSubmitting, setIsSubmitting] = useState(false);
+        const [isGeocoding, setIsGeocoding] = useState(false);
+        const [locationSuggestions, setLocationSuggestions] = useState([]);
+        const [addressInput, setAddressInput] = useState('');
+        const [isUpdatingCoordinates, setIsUpdatingCoordinates] = useState(false);
+
+        // Geocoding function using OpenStreetMap Nominatim API (free)
+        const geocodeAddress = async (address) => {
+            try {
+                setIsGeocoding(true);
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5&countrycodes=my&addressdetails=1`
+                );
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const suggestions = data.map(result => ({
+                        name: result.display_name,
+                        lat: parseFloat(result.lat),
+                        lng: parseFloat(result.lon),
+                        address: result.display_name
+                    }));
+                    return suggestions;
+                }
+                return [];
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                return [];
+            } finally {
+                setIsGeocoding(false);
+            }
+        };
+
+        // Handle address input change (no auto-search)
+        const handleAddressInputChange = (value) => {
+            setAddressInput(value);
+            // Clear suggestions when typing (but don't auto-search)
+            if (!value.trim()) {
+                setLocationSuggestions([]);
+            }
+        };
+
+        // Manual search function
+        const performAddressSearch = async () => {
+            if (!addressInput.trim()) {
+                setLocationSuggestions([]);
+                return;
+            }
+
+            if (addressInput.trim().length < 3) {
+                setError('Please enter at least 3 characters to search');
+                return;
+            }
+
+            const suggestions = await geocodeAddress(addressInput);
+            setLocationSuggestions(suggestions);
+        };
+
+        // Handle Enter key press
+        const handleKeyPress = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performAddressSearch();
+            }
+        };
+
+        // Focus input when location picker opens
+        useEffect(() => {
+            if (showLocationPicker && addressInputRef.current) {
+                setTimeout(() => {
+                    addressInputRef.current.focus();
+                }, 100);
+            }
+        }, [showLocationPicker]);
 
         const validateForm = () => {
             const errors = {};
@@ -196,26 +283,92 @@ const CampaignManagement = () => {
             return true;
         };
 
-        const [formData, setFormData] = useState(
-            selectedCampaign ? {
-                ...selectedCampaign,
-                sessions: selectedCampaign.sessions.map(session => ({
-                ...session,
-                date: formatDateForInput(session.date)
-            }))
-            } : {
-                location: '',
-                organizer: '',
-                address: '',
-                latitude: '',
-                longitude: '',
-                sessions: [{
+        const [formData, setFormData] = useState({
+            location: '',
+            organizer: '',
+            address: '',
+            latitude: '',
+            longitude: '',
+            sessions: [{
                 date: '',
                 start_time: '',
                 end_time: ''
             }]
+        });
+
+        // Initialize formData when selectedCampaign changes
+        useEffect(() => {
+            // Don't override if we're currently updating coordinates
+            if (isUpdatingCoordinates) {
+                return;
             }
-        );
+            
+            if (selectedCampaign) {
+                setFormData({
+                    ...selectedCampaign,
+                    sessions: selectedCampaign.sessions.map(session => ({
+                        ...session,
+                        date: formatDateForInput(session.date)
+                    }))
+                });
+            } else {
+                setFormData({
+                    location: '',
+                    organizer: '',
+                    address: '',
+                    latitude: '',
+                    longitude: '',
+                    sessions: [{
+                        date: '',
+                        start_time: '',
+                        end_time: ''
+                    }]
+                });
+            }
+        }, [selectedCampaign, isUpdatingCoordinates]);
+
+        // Debug formData changes
+        useEffect(() => {
+        }, [formData]);
+
+        // Select location from suggestions
+        const selectLocation = (location) => {
+            
+            // Set flag to prevent useEffect from overriding
+            setIsUpdatingCoordinates(true);
+            
+            const newFormData = {
+                ...formData,
+                latitude: location.lat.toString(),
+                longitude: location.lng.toString(),
+                address: location.address
+            };
+            
+            console.log('New formData after update:', newFormData); // Debug log
+            
+            setFormData(newFormData);
+            
+            setLocationSuggestions([]);
+            setAddressInput('');
+            
+            // Show success message
+            setSuccessMessage(`Location selected: ${location.name}`);
+            setTimeout(() => setSuccessMessage(''), 3000);
+            
+            // Reset the flag after a short delay
+            setTimeout(() => {
+                setIsUpdatingCoordinates(false);
+            }, 100);
+            
+            // Don't close the location picker - let user continue typing if needed
+            
+            // Maintain focus on input after selection
+            setTimeout(() => {
+                if (addressInputRef.current) {
+                    addressInputRef.current.focus();
+                }
+            }, 100);
+        };
 
         const addSession = () => {
         setFormData({
@@ -405,55 +558,155 @@ const CampaignManagement = () => {
                 )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Latitude <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="number"
-                        step="any"
-                        required
-                        value={formData.latitude}
-                        readOnly={modalMode === 'view'}
-                        onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors ${
-                            formErrors.latitude || formErrors.coordinates ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        } ${modalMode === 'view' ? 'bg-gray-50' : ''}`}
-                        placeholder="e.g., 1.5489000"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">Valid range: -90 to 90</p>
-                    {(formErrors.latitude || formErrors.coordinates) && (
-                        <p className="mt-1 text-sm text-red-600 flex items-center">
-                            <AlertCircle className="h-4 w-4 mr-1" />
-                            {formErrors.latitude || formErrors.coordinates}
-                        </p>
+                {/* Enhanced Location Picker */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700">
+                            Location Coordinates <span className="text-red-500">*</span>
+                        </label>
+                        {modalMode !== 'view' && (
+                            <div className="flex space-x-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowLocationPicker(!showLocationPicker);
+                                        if (showLocationPicker) {
+                                            // Clear search when hiding
+                                            setAddressInput('');
+                                            setLocationSuggestions([]);
+                                        }
+                                    }}
+                                    className="flex items-center px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                                >
+                                    <Map className="h-4 w-4 mr-1" />
+                                    {showLocationPicker ? 'Hide' : 'Show'} Location Tools
+                                </button>
+
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Location Picker Tools */}
+                    {showLocationPicker && modalMode !== 'view' && (
+                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+                            {/* Address Search */}
+                            <div className="search-container">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Search by Address
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        ref={addressInputRef}
+                                        type="text"
+                                        placeholder="Enter address and press Enter to search..."
+                                        value={addressInput}
+                                        onChange={(e) => handleAddressInputChange(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        autoComplete="off"
+                                        autoFocus
+                                    />
+                                    {isGeocoding && (
+                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* Address Suggestions */}
+                                {locationSuggestions.length > 0 && (
+                                    <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-lg z-10 relative">
+                                        {locationSuggestions.map((suggestion, index) => (
+                                            <button
+                                                key={index}
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    selectLocation(suggestion);
+                                                }}
+                                                className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 focus:outline-none focus:bg-gray-50 transition-colors"
+                                            >
+                                                <div className="text-sm font-medium text-gray-900 truncate">
+                                                    {suggestion.name}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {suggestion.lat.toFixed(6)}, {suggestion.lng.toFixed(6)}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+
+                        </div>
                     )}
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Longitude <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="number"
-                        step="any"
-                        required
-                        value={formData.longitude}
-                        readOnly={modalMode === 'view'}
-                        onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors ${
-                            formErrors.longitude || formErrors.coordinates ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        } ${modalMode === 'view' ? 'bg-gray-50' : ''}`}
-                        placeholder="e.g., 103.7956000"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">Valid range: -180 to 180</p>
-                    {(formErrors.longitude || formErrors.coordinates) && (
-                        <p className="mt-1 text-sm text-red-600 flex items-center">
-                            <AlertCircle className="h-4 w-4 mr-1" />
-                            {formErrors.longitude || formErrors.coordinates}
-                        </p>
-                    )}
-                </div>
+
+                    {/* Coordinate Input Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Latitude <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="any"
+                                required
+                                value={formData.latitude}
+                                readOnly={modalMode === 'view'}
+                                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors ${
+                                    formErrors.latitude || formErrors.coordinates ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                } ${modalMode === 'view' ? 'bg-gray-50' : ''}`}
+                                placeholder="e.g., 1.5489000"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Valid range: -90 to 90</p>
+                            {(formErrors.latitude || formErrors.coordinates) && (
+                                <p className="mt-1 text-sm text-red-600 flex items-center">
+                                    <AlertCircle className="h-4 w-4 mr-1" />
+                                    {formErrors.latitude || formErrors.coordinates}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Longitude <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                step="any"
+                                required
+                                value={formData.longitude}
+                                readOnly={modalMode === 'view'}
+                                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors ${
+                                    formErrors.longitude || formErrors.coordinates ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                                } ${modalMode === 'view' ? 'bg-gray-50' : ''}`}
+                                placeholder="e.g., 103.7956000"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Valid range: -180 to 180</p>
+                            {(formErrors.longitude || formErrors.coordinates) && (
+                                <p className="mt-1 text-sm text-red-600 flex items-center">
+                                    <AlertCircle className="h-4 w-4 mr-1" />
+                                    {formErrors.longitude || formErrors.coordinates}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Help Text */}
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start">
+                            <MapPin className="h-5 w-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                            <div className="text-sm text-blue-800">
+                                <p className="font-medium mb-1">Need help finding coordinates?</p>
+                                <ul className="text-xs space-y-1">
+                                    <li>• Type an address and press Enter to find coordinates</li>
+                                    <li>• Or enter coordinates manually if you know them</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div>
