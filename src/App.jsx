@@ -28,6 +28,7 @@ import Settings from './pages/user/Settings';
 import './styles/index.css';
 import Appointments from './pages/user/Appointment';
 import ScrollToTop from './components/common/ScrollToTop';
+import PageNotFound from './pages/common/PageNotFound';
 
 //Admin Side
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
@@ -112,6 +113,8 @@ function App() {
                 <Route path="/admin/messages" element={<AdminRoute><AdminDashboardLayout><MessageManagement /></AdminDashboardLayout></AdminRoute>} />
                 <Route path="/admin/reports" element={<AdminRoute requiredPermission="can_manage_reports"><Reports /></AdminRoute>} />
                 <Route path="/register" element={<Register />} />
+                {/* Catch-all route for undefined pages */}
+                <Route path="*" element={<PageNotFound />} />
               </Routes>
             </main>
             </Layout>
