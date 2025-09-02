@@ -54,6 +54,7 @@ app.use('/api/appointment', require('./routes/Admin/Admin_Appointments'));
 app.use('/api/admin/notifications', require('./routes/Admin/Admin_Notifications'));
 app.use('/api/admin/permission', require('./routes/Admin/Admin_Permission'));
 app.use('/api/admin', require('./routes/Admin/Admin_Messages'));
+app.use('/api/admin/audit-logs', require('./routes/Admin/Admin_AuditLogs'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -4,6 +4,7 @@ const router = express.Router();
 const pool = require('../../config/database');
 const authMiddleware = require('../../middleware/auth');
 const checkPermission = require('../../middleware/checkPermission');
+const { auditLogger } = require('../../middleware/auditLogger');
 
 // Get all donations with donor and blood bank details
 router.get('/', authMiddleware, checkPermission('can_manage_donations'), async (req, res) => {
@@ -99,7 +100,27 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // Update donation status and notes
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, checkPermission('can_manage_donations'), auditLogger('UPDATE_DONATION', 'donation', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    const donorName = responseData?.donor?.name || `Donor #${req.body.donor_id || req.params.id}`;
+    return `Donation by ${donorName}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [donations] = await connection.query('SELECT status, health_screening_notes FROM donations WHERE id = ?', [req.params.id]);
+      return donations.length > 0 ? donations[0] : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({
+    status: req.body.status,
+    health_screening_notes: req.body.health_screening_notes
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -220,7 +241,21 @@ router.get('/stats/summary', authMiddleware, async (req, res) => {
 });
 
 // Add new donation
-router.post('/', authMiddleware, checkPermission('can_manage_donations'), async (req, res) => {
+router.post('/', authMiddleware, checkPermission('can_manage_donations'), auditLogger('CREATE_DONATION', 'donation', {
+  getEntityId: (req, responseData) => responseData?.donation?.id,
+  getEntityName: (req, responseData) => {
+    const donorName = responseData?.donor?.name || `Donor #${req.body.donor_id}`;
+    return `Donation by ${donorName}`;
+  },
+  getNewValues: (req) => ({
+    donor_id: req.body.donor_id,
+    blood_bank_id: req.body.blood_bank_id,
+    donation_date: req.body.donation_date,
+    blood_type: req.body.blood_type,
+    quantity_ml: req.body.quantity_ml,
+    status: req.body.status || 'Pending'
+  })
+}), async (req, res) => {
   let connection;
   try {
     const {

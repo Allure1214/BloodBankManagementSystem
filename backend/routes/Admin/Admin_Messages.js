@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const authMiddleware = require('../../middleware/auth');
+const { auditLogger } = require('../../middleware/auditLogger');
 
 // Middleware to check if user is admin
 const isAdmin = (req, res, next) => {
@@ -128,7 +129,25 @@ router.get('/messages/:id', async (req, res) => {
 });
 
 // Update message status
-router.patch('/messages/:id/status', async (req, res) => {
+router.patch('/messages/:id/status', auditLogger('UPDATE_MESSAGE_STATUS', 'message', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    return responseData?.message?.subject ? 
+      `Message: ${responseData.message.subject} (from ${responseData.message.name || 'Unknown'})` : 
+      `Message #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [messages] = await connection.query('SELECT status FROM messages WHERE id = ?', [req.params.id]);
+      return messages.length > 0 ? { status: messages[0].status } : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({ status: req.body.status })
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -172,7 +191,32 @@ router.patch('/messages/:id/status', async (req, res) => {
 });
 
 // Add admin response to message
-router.post('/messages/:id/respond', async (req, res) => {
+router.post('/messages/:id/respond', auditLogger('RESPOND_TO_MESSAGE', 'message', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    return responseData?.message?.subject ? 
+      `Message: ${responseData.message.subject} (from ${responseData.message.name || 'Unknown'})` : 
+      `Message #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [messages] = await connection.query('SELECT status, admin_response FROM messages WHERE id = ?', [req.params.id]);
+      return messages.length > 0 ? { 
+        status: messages[0].status, 
+        has_response: !!messages[0].admin_response 
+      } : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({ 
+    status: 'Replied',
+    admin_response: req.body.response,
+    responded_by: req.user.id
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -219,7 +263,24 @@ router.post('/messages/:id/respond', async (req, res) => {
 });
 
 // Delete message
-router.delete('/messages/:id', async (req, res) => {
+router.delete('/messages/:id', auditLogger('DELETE_MESSAGE', 'message', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    return responseData?.message?.subject ? 
+      `Message: ${responseData.message.subject} (from ${responseData.message.name || 'Unknown'})` : 
+      `Message #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [messages] = await connection.query('SELECT * FROM messages WHERE id = ?', [req.params.id]);
+      return messages.length > 0 ? messages[0] : null;
+    } finally {
+      connection.release();
+    }
+  }
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;

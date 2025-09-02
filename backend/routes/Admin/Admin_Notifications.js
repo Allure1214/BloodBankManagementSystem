@@ -2,8 +2,23 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const authMiddleware = require('../../middleware/auth');
+const checkPermission = require('../../middleware/checkPermission');
+const { auditLogger } = require('../../middleware/auditLogger');
 
-router.post('/send', authMiddleware, async (req, res) => {
+router.post('/send', authMiddleware, checkPermission('can_manage_notifications'), auditLogger('SEND_NOTIFICATION', 'notification', {
+  getEntityId: (req, responseData) => `bulk_${Date.now()}`,
+  getEntityName: (req, responseData) => {
+    const recipientCount = responseData?.recipientCount || 0;
+    return `Notification: "${req.body.title}" (sent to ${recipientCount} users)`;
+  },
+  getOldValues: () => null,
+  getNewValues: (req, responseData) => ({
+    title: req.body.title,
+    message: req.body.message,
+    filters: req.body.filters,
+    recipient_count: responseData?.recipientCount || 0
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { title, message, filters } = req.body;

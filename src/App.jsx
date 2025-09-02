@@ -43,6 +43,7 @@ import NotificationManagement from './pages/admin/NotificationManagement';
 import MessageManagement from './pages/admin/MessageManagement';
 import SettingsPage from './pages/admin/PermissionSetting.jsx';
 import Reports from './pages/admin/Reports';
+import AuditTrail from './pages/admin/AuditTrail';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,6 +113,7 @@ function App() {
                 <Route path="/admin/notifications" element={<AdminRoute><NotificationManagement /></AdminRoute>} />
                 <Route path="/admin/messages" element={<AdminRoute><AdminDashboardLayout><MessageManagement /></AdminDashboardLayout></AdminRoute>} />
                 <Route path="/admin/reports" element={<AdminRoute requiredPermission="can_manage_reports"><Reports /></AdminRoute>} />
+                <Route path="/admin/audit-trail" element={<SuperAdminRoute><AuditTrail /></SuperAdminRoute>} />
                 <Route path="/register" element={<Register />} />
                 {/* Catch-all route for undefined pages */}
                 <Route path="*" element={<PageNotFound />} />

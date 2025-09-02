@@ -4,6 +4,7 @@ const router = express.Router();
 const pool = require('../../config/database');
 const authMiddleware = require('../../middleware/auth');
 const checkPermission = require('../../middleware/checkPermission');
+const { auditLogger } = require('../../middleware/auditLogger');
 
 // Get all campaigns
 router.get('/', authMiddleware, checkPermission('can_manage_campaigns'), async (req, res) => {
@@ -54,7 +55,18 @@ router.get('/', authMiddleware, checkPermission('can_manage_campaigns'), async (
 });
 
 // Add new campaign
-router.post('/', authMiddleware, checkPermission('can_manage_campaigns'), async (req, res) => {
+router.post('/', authMiddleware, checkPermission('can_manage_campaigns'), auditLogger('CREATE_CAMPAIGN', 'campaign', {
+  getEntityId: (req, responseData) => responseData?.campaign?.id,
+  getEntityName: (req) => req.body.location,
+  getNewValues: (req) => ({
+    location: req.body.location,
+    organizer: req.body.organizer,
+    address: req.body.address,
+    latitude: req.body.latitude,
+    longitude: req.body.longitude,
+    sessions: req.body.sessions
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { location, organizer, address, latitude, longitude, sessions } = req.body;
@@ -117,7 +129,30 @@ router.post('/', authMiddleware, checkPermission('can_manage_campaigns'), async 
   }
 });
 
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, checkPermission('can_manage_campaigns'), auditLogger('UPDATE_CAMPAIGN', 'campaign', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    return responseData?.campaign?.location || req.body.location || `Campaign #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [campaigns] = await connection.query('SELECT * FROM campaigns WHERE id = ?', [req.params.id]);
+      return campaigns.length > 0 ? campaigns[0] : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({
+    location: req.body.location,
+    organizer: req.body.organizer,
+    address: req.body.address,
+    latitude: req.body.latitude,
+    longitude: req.body.longitude,
+    sessions: req.body.sessions
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -247,7 +282,27 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // Delete campaign
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, checkPermission('can_manage_campaigns'), auditLogger('DELETE_CAMPAIGN', 'campaign', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [campaigns] = await connection.query('SELECT location FROM campaigns WHERE id = ?', [req.params.id]);
+      return campaigns.length > 0 ? campaigns[0].location : `Campaign #${req.params.id}`;
+    } finally {
+      connection.release();
+    }
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [campaigns] = await connection.query('SELECT * FROM campaigns WHERE id = ?', [req.params.id]);
+      return campaigns.length > 0 ? campaigns[0] : null;
+    } finally {
+      connection.release();
+    }
+  }
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;

@@ -4,6 +4,7 @@ const router = express.Router();
 const pool = require('../../config/database');
 const authMiddleware = require('../../middleware/auth');
 const checkPermission = require('../../middleware/checkPermission');
+const { auditLogger } = require('../../middleware/auditLogger');
 
 // Get all appointments
 router.get('/', authMiddleware, checkPermission('can_manage_appointments'), async (req, res) => {
@@ -47,7 +48,28 @@ router.get('/', authMiddleware, checkPermission('can_manage_appointments'), asyn
   }
 });
 
-router.put('/:id/complete-donation', authMiddleware, async (req, res) => {
+router.put('/:id/complete-donation', authMiddleware, checkPermission('can_manage_appointments'), auditLogger('COMPLETE_APPOINTMENT', 'appointment', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    const userName = responseData?.appointment?.name || `User #${req.params.id}`;
+    return `Appointment for ${userName}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [appointments] = await connection.query('SELECT donation_completed, donation_completed_date, next_eligible_date FROM campaign_reservations WHERE id = ?', [req.params.id]);
+      return appointments.length > 0 ? appointments[0] : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({
+    donation_completed: req.body.donation_completed,
+    donation_completed_date: req.body.donation_completed_date,
+    next_eligible_date: req.body.next_eligible_date
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -147,7 +169,24 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // Update appointment status
-router.put('/:id/status', authMiddleware, async (req, res) => {
+router.put('/:id/status', authMiddleware, checkPermission('can_manage_appointments'), auditLogger('CHANGE_APPOINTMENT_STATUS', 'appointment', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    const userName = responseData?.appointment?.name || `User #${req.params.id}`;
+    return `Appointment for ${userName}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [appointments] = await connection.query('SELECT status FROM campaign_reservations WHERE id = ?', [req.params.id]);
+      return appointments.length > 0 ? { status: appointments[0].status } : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({ status: req.body.status })
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;

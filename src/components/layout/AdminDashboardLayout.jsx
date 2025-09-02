@@ -221,6 +221,13 @@ const AdminDashboardLayout = ({ children }) => {
         path: '/admin/reports',
         requiredPermission: 'can_manage_reports',
         keywords: ['reports', 'analytics', 'statistics', 'data']
+      },
+      {
+        title: 'Audit Trail',
+        icon: ShieldCheck,
+        path: '/admin/audit-trail',
+        superAdminOnly: true,
+        keywords: ['audit', 'logs', 'tracking', 'history', 'actions']
       }
     ];
   

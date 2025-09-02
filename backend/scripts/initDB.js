@@ -186,6 +186,28 @@ async function initializeDatabase() {
       )
     `);
 
+    // Create Audit Logs table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        admin_id INT NOT NULL,
+        admin_name VARCHAR(100) NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        entity_type VARCHAR(50) NOT NULL,
+        entity_id VARCHAR(50),
+        entity_name VARCHAR(255),
+        old_values JSON,
+        new_values JSON,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_admin_id (admin_id),
+        INDEX idx_entity_type (entity_type),
+        INDEX idx_created_at (created_at)
+      )
+    `);
+
     // Create default admin user
     const hashedPassword = await require('bcryptjs').hash('admin123', 10);
     await connection.query(`

@@ -4,9 +4,21 @@ const router = express.Router();
 const pool = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const checkPermission = require('../middleware/checkPermission');
+const { auditLogger } = require('../middleware/auditLogger');
 
 // Add blood bank
-router.post('/', authMiddleware, checkPermission('can_manage_blood_banks'), async (req, res) => {
+router.post('/', authMiddleware, checkPermission('can_manage_blood_banks'), auditLogger('CREATE_BLOOD_BANK', 'blood_bank', {
+  getEntityId: (req, responseData) => responseData?.data?.id || 'new',
+  getEntityName: (req, responseData) => req.body.name || `Blood Bank #${responseData?.data?.id || 'new'}`,
+  getOldValues: () => null,
+  getNewValues: (req) => ({
+    name: req.body.name,
+    address: req.body.address,
+    area: req.body.area,
+    contact: req.body.contact,
+    operating_hours: req.body.operating_hours
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { name, address, area, contact, operating_hours } = req.body;
@@ -53,7 +65,42 @@ router.post('/', authMiddleware, checkPermission('can_manage_blood_banks'), asyn
 });
 
 // Update blood bank
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, checkPermission('can_manage_blood_banks'), auditLogger('UPDATE_BLOOD_BANK', 'blood_bank', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Try to get blood bank name from response data first
+    if (responseData?.bloodBank?.name) {
+      return responseData.bloodBank.name;
+    }
+    
+    // Use the name from request body if available
+    if (req.body.name) {
+      return req.body.name;
+    }
+    
+    // Fallback to placeholder
+    return `Blood Bank #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [bloodBanks] = await connection.query(
+        'SELECT name, address, area, contact, operating_hours FROM blood_banks WHERE id = ?',
+        [req.params.id]
+      );
+      return bloodBanks.length > 0 ? bloodBanks[0] : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({
+    name: req.body.name,
+    address: req.body.address,
+    area: req.body.area,
+    contact: req.body.contact,
+    operating_hours: req.body.operating_hours
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -88,9 +135,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
       [name, address, area, contact, operating_hours, id]
     );
 
+    // Get blood bank name for response
+    const [bloodBanks] = await connection.query(
+      'SELECT name FROM blood_banks WHERE id = ?',
+      [id]
+    );
+
     res.json({
       success: true,
-      message: 'Blood bank updated successfully'
+      message: 'Blood bank updated successfully',
+      bloodBank: bloodBanks.length > 0 ? { name: bloodBanks[0].name } : null
     });
 
   } catch (error) {
@@ -105,7 +159,41 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // Delete blood bank
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, checkPermission('can_manage_blood_banks'), auditLogger('DELETE_BLOOD_BANK', 'blood_bank', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: async (req) => {
+    // For delete operations, fetch the blood bank name before deletion
+    try {
+      const connection = await pool.getConnection();
+      const [bloodBanks] = await connection.query(
+        'SELECT name FROM blood_banks WHERE id = ?',
+        [req.params.id]
+      );
+      connection.release();
+      
+      if (bloodBanks.length > 0) {
+        return bloodBanks[0].name;
+      }
+    } catch (error) {
+      console.error('Error fetching blood bank name for delete audit log:', error);
+    }
+    
+    return `Blood Bank #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [bloodBanks] = await connection.query(
+        'SELECT name, address, area, contact, operating_hours FROM blood_banks WHERE id = ?',
+        [req.params.id]
+      );
+      return bloodBanks.length > 0 ? bloodBanks[0] : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: () => null
+}), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;

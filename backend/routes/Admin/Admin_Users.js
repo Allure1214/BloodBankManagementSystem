@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const authMiddleware = require('../../middleware/auth');
+const checkPermission = require('../../middleware/checkPermission');
+const { auditLogger, auditHelpers } = require('../../middleware/auditLogger');
 const bcrypt = require('bcryptjs');
 
 const validatePassword = (password) => {
@@ -158,7 +160,28 @@ router.get('/profiles', authMiddleware, async (req, res) => {
 });
 
 // Update user
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, checkPermission('can_manage_users'), auditLogger('UPDATE_USER', 'user', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    return responseData?.user?.name || req.body.name || `User #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [users] = await connection.query('SELECT name, email, role, status FROM users WHERE id = ?', [req.params.id]);
+      return users.length > 0 ? users[0] : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({
+    name: req.body.name,
+    email: req.body.email,
+    role: req.body.role,
+    status: req.body.status
+  })
+}), async (req, res) => {
   let connection;
   try {
     const { name, email, role, status } = req.body;
@@ -188,7 +211,23 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // Update user status
-router.put('/:id/status', authMiddleware, async (req, res) => {
+router.put('/:id/status', authMiddleware, checkPermission('can_manage_users'), auditLogger('CHANGE_USER_STATUS', 'user', {
+  getEntityId: (req) => req.params.id,
+  getEntityName: (req, responseData) => {
+    // Use response data if available, otherwise return a placeholder
+    return responseData?.user?.name || `User #${req.params.id}`;
+  },
+  getOldValues: async (req) => {
+    const connection = await pool.getConnection();
+    try {
+      const [users] = await connection.query('SELECT status FROM users WHERE id = ?', [req.params.id]);
+      return users.length > 0 ? { status: users[0].status } : null;
+    } finally {
+      connection.release();
+    }
+  },
+  getNewValues: (req) => ({ status: req.body.status })
+}), async (req, res) => {
   let connection;
   try {
     const { status } = req.body;
@@ -216,7 +255,16 @@ router.put('/:id/status', authMiddleware, async (req, res) => {
 });
 
 // Create new user
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, checkPermission('can_manage_users'), auditLogger('CREATE_USER', 'user', {
+  getEntityId: (req, responseData) => responseData?.user?.id,
+  getEntityName: (req, responseData) => responseData?.user?.name || req.body.name,
+  getNewValues: (req, responseData) => ({
+    name: req.body.name,
+    email: req.body.email,
+    role: req.body.role,
+    status: req.body.status
+  })
+}), async (req, res) => {
   if (req.user.role !== 'superadmin') {
     return res.status(403).json({
       success: false,
