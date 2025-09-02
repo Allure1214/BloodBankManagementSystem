@@ -17,6 +17,9 @@ const MessageManagement = () => {
   const [showResponseModal, setShowResponseModal] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [responding, setResponding] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     new: 0,
@@ -104,24 +107,35 @@ const MessageManagement = () => {
     }
   };
 
-  const deleteMessage = async (messageId) => {
-    if (!window.confirm('Are you sure you want to delete this message?')) {
-      return;
-    }
+  const handleDeleteClick = (messageId) => {
+    const message = messages.find(msg => msg.id === messageId);
+    setMessageToDelete(message);
+    setShowDeleteModal(true);
+  };
 
+  const deleteMessage = async () => {
+    if (!messageToDelete) return;
+
+    setDeleting(true);
     try {
-      const response = await apiClient.delete(`/admin/messages/${messageId}`);
+      const response = await apiClient.delete(`/admin/messages/${messageToDelete.id}`);
 
       if (response.data.success) {
-        setMessages(prev => prev.filter(msg => msg.id !== messageId));
+        setMessages(prev => prev.filter(msg => msg.id !== messageToDelete.id));
         fetchStats(); // Refresh stats
-        if (selectedMessage?.id === messageId) {
+        if (selectedMessage?.id === messageToDelete.id) {
           setSelectedMessage(null);
           setShowModal(false);
         }
+        setShowDeleteModal(false);
+        setMessageToDelete(null);
+        setSuccessMessage('Message deleted successfully!');
       }
     } catch (err) {
       console.error('Failed to delete message:', err);
+      setError('Failed to delete message. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -695,7 +709,7 @@ const MessageManagement = () => {
                               </button>
                             )}
                             <button
-                              onClick={() => deleteMessage(message.id)}
+                              onClick={() => handleDeleteClick(message.id)}
                               className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                               aria-label={`Delete message from ${message.name}`}
                             >
@@ -762,7 +776,7 @@ const MessageManagement = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => deleteMessage(message.id)}
+                          onClick={() => handleDeleteClick(message.id)}
                           className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                           aria-label={`Delete message from ${message.name}`}
                         >
@@ -953,7 +967,7 @@ const MessageManagement = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => deleteMessage(selectedMessage.id)}
+                    onClick={() => handleDeleteClick(selectedMessage.id)}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
                   >
                     Delete Message
@@ -1082,6 +1096,80 @@ const MessageManagement = () => {
                        </div>
                      ) : (
                        'Send Response'
+                     )}
+                   </button>
+                 </div>
+               </div>
+             </div>
+           </div>
+         )}
+
+         {/* Custom Delete Confirmation Modal */}
+         {showDeleteModal && messageToDelete && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+             <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+               {/* Header */}
+               <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-white">
+                 <div className="flex items-center space-x-3">
+                   <div className="p-2 bg-red-100 rounded-lg">
+                     <Trash2 className="h-5 w-5 text-red-600" />
+                   </div>
+                   <h2 className="text-xl font-bold text-gray-900">Delete Message</h2>
+                 </div>
+               </div>
+
+               {/* Content */}
+               <div className="px-6 py-6">
+                 <div className="text-center">
+                   <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                     <Trash2 className="h-6 w-6 text-red-600" />
+                   </div>
+                   <h3 className="text-lg font-medium text-gray-900 mb-2">
+                     Are you sure you want to delete this message?
+                   </h3>
+                   <p className="text-sm text-gray-500 mb-4">
+                     This action cannot be undone. The message from <span className="font-semibold text-gray-900">{messageToDelete.name}</span> will be permanently removed.
+                   </p>
+                   
+                   {/* Message Preview */}
+                   <div className="bg-gray-50 rounded-lg p-3 mb-4 text-left">
+                     <div className="text-xs text-gray-500 mb-1">Subject:</div>
+                     <div className="text-sm font-medium text-gray-900 mb-2">{messageToDelete.subject}</div>
+                     <div className="text-xs text-gray-500 mb-1">From:</div>
+                     <div className="text-sm text-gray-700">{messageToDelete.email}</div>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Footer */}
+               <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                 <div className="flex justify-end space-x-3">
+                   <button
+                     onClick={() => {
+                       setShowDeleteModal(false);
+                       setMessageToDelete(null);
+                     }}
+                     disabled={deleting}
+                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                   >
+                     Cancel
+                   </button>
+                   <button
+                     onClick={deleteMessage}
+                     disabled={deleting}
+                     className={`px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors ${
+                       deleting
+                         ? 'bg-gray-400 cursor-not-allowed text-white'
+                         : 'bg-red-600 text-white hover:bg-red-700'
+                     }`}
+                   >
+                     {deleting ? (
+                       <div className="flex items-center">
+                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                         Deleting...
+                       </div>
+                     ) : (
+                       'Delete Message'
                      )}
                    </button>
                  </div>
