@@ -2,6 +2,9 @@
 
 A comprehensive web-based Blood Bank Management System built with React and Node.js that helps connect blood donors with blood banks and manages blood donation campaigns.
 
+**Version**: 1.0.2  
+**Status**: Production Ready ✅
+
 ## Features 🌟
 
 ### For Users
@@ -27,41 +30,70 @@ A comprehensive web-based Blood Bank Management System built with React and Node
   - Real-time blood inventory tracking
   - Donation statistics and trends
   - User activity monitoring
+  - Interactive charts and visualizations
 
 - **Campaign Management**
   - Create and manage donation campaigns
   - Track campaign performance
   - Manage appointment schedules
+  - Interactive campaign maps
 
 - **Inventory Management**
   - Track blood units by type
   - Monitor expiration dates
   - Manage blood bank locations
+  - Automated inventory alerts
+
+- **Advanced Features**
+  - **Audit Trail System** - Complete activity logging and tracking
+  - **Permission Management** - Granular role-based access control
+  - **Messaging System** - Internal communication platform
+  - **Notification Management** - Bulk notifications and alerts
+  - **Advanced Reporting** - PDF and Excel export capabilities
+  - **User Management** - Comprehensive user administration
+  - **Email Integration** - Automated email notifications
 
 ## Tech Stack 💻
 
 ### Frontend
-- React.js
+- React.js (v18.3.1)
 - TailwindCSS
-- React Query
+- React Query (@tanstack/react-query)
 - React Router
 - Lucide Icons
 - Recharts
+- React Leaflet (Interactive Maps)
+- Google Maps API
+- React Hook Form
+- Yup (Validation)
+- Headless UI
+- Heroicons
 
 ### Backend
 - Node.js
 - Express.js
-- MySQL
+- MySQL (mysql2)
 - JWT Authentication
 - Bcrypt
+- Nodemailer (Email notifications)
+- OpenAI API (AI features)
+- Express Rate Limiting
+- CORS
+
+### Additional Libraries
+- jsPDF & jsPDF AutoTable (PDF generation)
+- XLSX (Excel export)
+- Leaflet (Interactive maps)
 
 ## Prerequisites 📋
 
 Before running this project, make sure you have:
 
-- Node.js (v14 or higher)
+- Node.js (v16 or higher)
 - MySQL (v8.0 or higher)
 - npm or yarn package manager
+- Google Maps API key (for map features)
+- Email service credentials (for notifications)
 
 ## Installation 🚀
 
@@ -86,6 +118,7 @@ npm install
 - Create `.env` in the root directory for frontend:
 ```env
 VITE_API_URL=http://localhost:5000
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 - Create `.env` in the backend directory:
 ```env
@@ -95,6 +128,11 @@ DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 DB_NAME=blood_bank_db
 JWT_SECRET=your_jwt_secret
+EMAIL_HOST=your_email_host
+EMAIL_PORT=587
+EMAIL_USER=your_email_user
+EMAIL_PASS=your_email_password
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 5. Initialize the database
@@ -116,18 +154,61 @@ npm run dev
 
 ```
 blood-bank-management/          
-│   ├── src/          # React frontend
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── context/
-│   │   └── utils/
-│   └── public/
-└── backend/           # Node.js backend
-    ├── config/
-    ├── routes/
-    ├── middleware/
-    └── scripts/
+│   ├── src/                    # React frontend
+│   │   ├── components/         # Reusable UI components
+│   │   │   ├── auth/          # Authentication components
+│   │   │   ├── common/        # Common UI components
+│   │   │   ├── layout/        # Layout components
+│   │   │   └── modules/       # Feature-specific modules
+│   │   ├── pages/             # Page components
+│   │   │   ├── admin/         # Admin dashboard pages
+│   │   │   ├── user/          # User-facing pages
+│   │   │   └── common/        # Shared pages
+│   │   ├── context/           # React context providers
+│   │   ├── api/               # API client configuration
+│   │   ├── utils/             # Utility functions
+│   │   └── styles/            # Global styles
+│   ├── public/                # Static assets
+│   ├── dist/                  # Production build
+│   └── package.json           # Frontend dependencies
+└── backend/                   # Node.js backend
+    ├── config/                # Database configuration
+    ├── routes/                # API routes
+    │   ├── Admin/            # Admin-specific routes
+    │   └── *.js              # General routes
+    ├── middleware/            # Custom middleware
+    │   ├── auth.js           # Authentication
+    │   ├── auditLogger.js    # Audit trail logging
+    │   ├── checkPermission.js # Permission checking
+    │   └── errorHandler.js   # Error handling
+    ├── scripts/               # Database scripts
+    │   └── initDB.js         # Database initialization
+    ├── server.js              # Main server file
+    └── package.json           # Backend dependencies
 ```
+
+## Screenshots & Demo 📸
+
+### User Interface
+- **Homepage**: Modern landing page with service overview
+- **Blood Availability**: Real-time blood inventory search
+- **Campaign Maps**: Interactive maps showing donation locations
+- **User Dashboard**: Personal donation history and appointments
+
+### Admin Interface
+- **Admin Dashboard**: Comprehensive analytics and statistics
+- **Inventory Management**: Blood stock tracking with expiration alerts
+- **Campaign Management**: Create and manage donation campaigns
+- **Audit Trail**: Complete activity logging and monitoring
+- **Permission Management**: Granular role-based access control
+
+### Key Features
+- 📊 **Interactive Charts**: Real-time data visualization
+- 🗺️ **Interactive Maps**: Location-based services
+- 📱 **Responsive Design**: Mobile-friendly interface
+- 🔐 **Secure Authentication**: JWT-based security
+- 📧 **Email Notifications**: Automated communication
+- 📄 **Export Capabilities**: PDF and Excel reports
 
 ## API Documentation 📚
 
@@ -150,7 +231,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support 💬
 
-For support, contact us at B220091B@sc.edu.my or open an issue in the GitHub repository.
+For support, contact us at cyx.yongxian01@gmail.com or open an issue in the GitHub repository.
 
 ## Acknowledgements 🙏
 
