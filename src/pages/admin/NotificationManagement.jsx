@@ -5,8 +5,8 @@ import NotificationList from './NotificationList';
 
     const NotificationManagement = () => {
     const [filters, setFilters] = useState({
-        bloodType: '',
-        area: '',
+        bloodType: [],
+        area: [],
     });
     const [notification, setNotification] = useState({
         title: '',
@@ -29,6 +29,9 @@ import NotificationList from './NotificationList';
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [isCheckingRecipients, setIsCheckingRecipients] = useState(false);
+    const [showRecipientDetails, setShowRecipientDetails] = useState(false);
+    const [recipientDetails, setRecipientDetails] = useState([]);
+    const [loadingRecipients, setLoadingRecipients] = useState(false);
 
     const checkRecipients = async () => {
         setIsCheckingRecipients(true);
@@ -53,6 +56,37 @@ import NotificationList from './NotificationList';
         }
     };
 
+    const fetchRecipientDetails = async () => {
+        setLoadingRecipients(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/admin/notifications/recipient-details', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ filters }),
+            });
+        
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                setRecipientDetails(data.recipients || []);
+                setShowRecipientDetails(true);
+            } else {
+                setErrorMessage('Failed to fetch recipient details');
+            }
+        } catch (error) {
+            console.error('Error fetching recipient details:', error);
+            setErrorMessage('Failed to fetch recipient details');
+        } finally {
+            setLoadingRecipients(false);
+        }
+    };
+
     // Check recipients when filters change
     useEffect(() => {
         checkRecipients();
@@ -66,13 +100,13 @@ import NotificationList from './NotificationList';
 
     // Helper functions for Phase 1 improvements
     const clearAllFilters = () => {
-        setFilters({ bloodType: '', area: '' });
+        setFilters({ bloodType: [], area: [] });
         setFormErrors({});
         setErrorMessage('');
     };
 
     const hasActiveFilters = () => {
-        return filters.bloodType !== '' || filters.area !== '';
+        return filters.bloodType.length > 0 || filters.area.length > 0;
     };
 
     const validateForm = () => {
@@ -195,13 +229,15 @@ import NotificationList from './NotificationList';
         let message = template.message;
         
         // Replace placeholders with current filter values
-        if (filters.bloodType) {
-            title = title.replace('{bloodType}', filters.bloodType);
-            message = message.replace('{bloodType}', filters.bloodType);
+        if (filters.bloodType.length > 0) {
+            const bloodTypes = filters.bloodType.join(', ');
+            title = title.replace('{bloodType}', bloodTypes);
+            message = message.replace('{bloodType}', bloodTypes);
         }
-        if (filters.area) {
-            title = title.replace('{area}', filters.area);
-            message = message.replace('{area}', filters.area);
+        if (filters.area.length > 0) {
+            const areas = filters.area.join(', ');
+            title = title.replace('{area}', areas);
+            message = message.replace('{area}', areas);
         }
         
         setNotification({
@@ -419,6 +455,143 @@ import NotificationList from './NotificationList';
             </div>
         );
 
+    const RecipientDetailsModal = () => (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                                <Eye className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Recipient Details</h2>
+                                <p className="text-sm text-gray-600">
+                                    {recipientDetails.length} recipient{recipientDetails.length !== 1 ? 's' : ''} will receive this notification
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowRecipientDetails(false)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label="Close modal"
+                        >
+                            <X className="h-5 w-5 text-gray-500" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    {loadingRecipients ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                            <span className="text-gray-600">Loading recipient details...</span>
+                        </div>
+                    ) : recipientDetails.length === 0 ? (
+                        <div className="text-center py-12">
+                            <Eye className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">No Recipients Found</h3>
+                            <p className="text-gray-600">No users match the current filter criteria.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {/* Filter Summary */}
+                            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                                    <div className="p-1 bg-gray-100 rounded-lg mr-2">
+                                        <Filter className="h-4 w-4 text-gray-600" />
+                                    </div>
+                                    Current Filters
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="text-sm text-gray-600">Blood Type:</span>
+                                        <span className="ml-2 text-sm font-medium text-gray-900">
+                                            {filters.bloodType || 'All blood types'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm text-gray-600">Area:</span>
+                                        <span className="ml-2 text-sm font-medium text-gray-900">
+                                            {filters.area || 'All areas'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recipients List */}
+                            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-lg font-semibold text-gray-900">Recipients List</h3>
+                                    </div>
+                                </div>
+                                <div className="max-h-96 overflow-y-auto p-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {recipientDetails.map((recipient, index) => (
+                                            <div key={recipient.id || index} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors border border-gray-200">
+                                                {/* Header with Avatar and Basic Info */}
+                                                <div className="flex items-center space-x-3 mb-3">
+                                                    <div className="h-12 w-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
+                                                        <span className="text-lg font-semibold text-blue-600">
+                                                            {recipient.name ? recipient.name.charAt(0).toUpperCase() : 'U'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h4 className="text-base font-semibold text-gray-900">
+                                                            {recipient.name || 'Unknown User'}
+                                                        </h4>
+                                                        <p className="text-sm text-gray-600">{recipient.email}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Details Grid */}
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="text-center">
+                                                        <div className="text-xs text-gray-500 mb-1">Blood Type</div>
+                                                        <div className="text-sm font-medium text-gray-900 bg-white rounded px-2 py-1 border">
+                                                            {recipient.blood_type || 'Not Set'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-xs text-gray-500 mb-1">Area</div>
+                                                        <div className="text-sm font-medium text-gray-900 bg-white rounded px-2 py-1 border">
+                                                            {recipient.area || 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-xs text-gray-500 mb-1">Phone</div>
+                                                        <div className="text-sm font-medium text-gray-900 bg-white rounded px-2 py-1 border">
+                                                            {recipient.phone || 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                    <div className="flex justify-end space-x-3">
+                        <button
+                            onClick={() => setShowRecipientDetails(false)}
+                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <AdminLayout>
             <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -480,24 +653,34 @@ import NotificationList from './NotificationList';
                         <h2 className="text-xl font-bold text-gray-900">Target Audience</h2>
                 </div>
                                         <div className="flex items-center space-x-3">
-                        <div className={`px-4 py-2 rounded-full border transition-colors ${
-                            isCheckingRecipients
-                                ? 'bg-gray-100 text-gray-600 border-gray-200'
-                                : recipientCount > 0 
-                                    ? 'bg-green-100 text-green-800 border-green-200' 
-                                    : 'bg-red-100 text-red-800 border-red-200'
-                        }`}>
+                        <button
+                            onClick={recipientCount > 0 ? fetchRecipientDetails : undefined}
+                            disabled={isCheckingRecipients || recipientCount === 0}
+                            className={`px-4 py-2 rounded-full border transition-colors ${
+                                isCheckingRecipients
+                                    ? 'bg-gray-100 text-gray-600 border-gray-200 cursor-not-allowed'
+                                    : recipientCount > 0 
+                                        ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200 cursor-pointer' 
+                                        : 'bg-red-100 text-red-800 border-red-200 cursor-not-allowed'
+                            }`}
+                            aria-label={recipientCount > 0 ? 'Click to view recipient details' : 'No recipients available'}
+                        >
                             {isCheckingRecipients ? (
                                 <div className="flex items-center">
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
                                     <span className="text-sm font-medium">Checking...</span>
                                 </div>
                             ) : (
-                                <span className="text-sm font-medium">
-                                    {recipientCount} potential recipient{recipientCount !== 1 ? 's' : ''}
-                                </span>
+                                <div className="flex items-center">
+                                    <span className="text-sm font-medium">
+                                        {recipientCount} potential recipient{recipientCount !== 1 ? 's' : ''}
+                                    </span>
+                                    {recipientCount > 0 && (
+                                        <Eye className="h-4 w-4 ml-2" />
+                                    )}
+                                </div>
                             )}
-                        </div>
+                        </button>
                         {hasActiveFilters() && (
                             <button
                                 onClick={clearAllFilters}
@@ -516,16 +699,16 @@ import NotificationList from './NotificationList';
                 {/* Enhanced Blood Type Filter */}
                 <div className="space-y-3">
                     <label className="block text-sm font-medium text-gray-700">Blood Type</label>
-                                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
+                    <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
                         <button
-                            onClick={() => setFilters(prev => ({ ...prev, bloodType: '' }))}
+                            onClick={() => setFilters(prev => ({ ...prev, bloodType: [] }))}
                             className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
-                                !filters.bloodType 
+                                filters.bloodType.length === 0
                                     ? 'bg-red-100 text-red-700 border-red-300 ring-2 ring-red-500 ring-offset-2'
                                     : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
                             }`}
                             aria-label="Select all blood types"
-                            aria-pressed={!filters.bloodType}
+                            aria-pressed={filters.bloodType.length === 0}
                         >
                             <span className="hidden sm:inline">All Types</span>
                             <span className="sm:hidden">All</span>
@@ -533,14 +716,21 @@ import NotificationList from './NotificationList';
                         {BLOOD_TYPES.map(type => (
                             <button
                                 key={type}
-                                onClick={() => setFilters(prev => ({ ...prev, bloodType: type }))}
+                                onClick={() => {
+                                    setFilters(prev => {
+                                        const newBloodTypes = prev.bloodType.includes(type)
+                                            ? prev.bloodType.filter(t => t !== type)
+                                            : [...prev.bloodType, type];
+                                        return { ...prev, bloodType: newBloodTypes };
+                                    });
+                                }}
                                 className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
-                                    filters.bloodType === type
+                                    filters.bloodType.includes(type)
                                         ? 'bg-red-100 text-red-700 border-red-300 ring-2 ring-red-500 ring-offset-2'
                                         : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
                                 }`}
                                 aria-label={`Select ${type} blood type`}
-                                aria-pressed={filters.bloodType === type}
+                                aria-pressed={filters.bloodType.includes(type)}
                             >
                                 {type}
                             </button>
@@ -551,39 +741,65 @@ import NotificationList from './NotificationList';
                 {/* Enhanced Area Filter */}
                 <div className="space-y-3">
                     <label className="block text-sm font-medium text-gray-700">Area</label>
-                                        <select
-                        value={filters.area}
-                        onChange={(e) => setFilters(prev => ({ ...prev, area: e.target.value }))}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
-                        aria-label="Select area for notification targeting"
-                    >
-                    <option value="">All Areas</option>
-                    {AREAS.map(area => (
-                        <option key={area} value={area}>{area}</option>
-                    ))}
-                    </select>
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                        <button
+                            onClick={() => setFilters(prev => ({ ...prev, area: [] }))}
+                            className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
+                                filters.area.length === 0
+                                    ? 'bg-red-100 text-red-700 border-red-300 ring-2 ring-red-500 ring-offset-2'
+                                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                            }`}
+                            aria-label="Select all areas"
+                            aria-pressed={filters.area.length === 0}
+                        >
+                            <span className="hidden sm:inline">All Areas</span>
+                            <span className="sm:hidden">All</span>
+                        </button>
+                        {AREAS.map(area => (
+                            <button
+                                key={area}
+                                onClick={() => {
+                                    setFilters(prev => {
+                                        const newAreas = prev.area.includes(area)
+                                            ? prev.area.filter(a => a !== area)
+                                            : [...prev.area, area];
+                                        return { ...prev, area: newAreas };
+                                    });
+                                }}
+                                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
+                                    filters.area.includes(area)
+                                        ? 'bg-red-100 text-red-700 border-red-300 ring-2 ring-red-500 ring-offset-2'
+                                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                                }`}
+                                aria-label={`Select ${area} area`}
+                                aria-pressed={filters.area.includes(area)}
+                            >
+                                {area}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 </div>
 
                 {/* Filter Chips */}
                 {hasActiveFilters() && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                        {filters.bloodType && (
+                        {filters.bloodType.length > 0 && (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200">
-                                Blood Type: {filters.bloodType}
+                                Blood Type: {filters.bloodType.join(', ')}
                                 <button
-                                    onClick={() => setFilters(prev => ({ ...prev, bloodType: '' }))}
+                                    onClick={() => setFilters(prev => ({ ...prev, bloodType: [] }))}
                                     className="ml-2 hover:bg-blue-200 rounded-full p-0.5"
                                 >
                                     <X className="h-3 w-3" />
                                 </button>
                             </span>
                         )}
-                        {filters.area && (
+                        {filters.area.length > 0 && (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 border border-green-200">
-                                Area: {filters.area}
+                                Area: {filters.area.join(', ')}
                                 <button
-                                    onClick={() => setFilters(prev => ({ ...prev, area: '' }))}
+                                    onClick={() => setFilters(prev => ({ ...prev, area: [] }))}
                                     className="ml-2 hover:bg-green-200 rounded-full p-0.5"
                                 >
                                     <X className="h-3 w-3" />
@@ -836,11 +1052,15 @@ import NotificationList from './NotificationList';
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm text-gray-600">Blood Type:</span>
-                                            <span className="text-sm font-medium text-gray-900">{filters.bloodType || 'All blood types'}</span>
+                                            <span className="text-sm font-medium text-gray-900">
+                                                {filters.bloodType.length > 0 ? filters.bloodType.join(', ') : 'All blood types'}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm text-gray-600">Area:</span>
-                                            <span className="text-sm font-medium text-gray-900">{filters.area || 'All areas'}</span>
+                                            <span className="text-sm font-medium text-gray-900">
+                                                {filters.area.length > 0 ? filters.area.join(', ') : 'All areas'}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between items-center pt-2 border-t border-green-200">
                                             <span className="text-sm font-medium text-gray-900">Total Recipients:</span>
@@ -888,6 +1108,9 @@ import NotificationList from './NotificationList';
 
             {/* Success Modal */}
             {showSuccessModal && <SuccessModal />}
+
+            {/* Recipient Details Modal */}
+            {showRecipientDetails && <RecipientDetailsModal />}
 
             {/* Enhanced Error Toast */}
             {errorMessage && (

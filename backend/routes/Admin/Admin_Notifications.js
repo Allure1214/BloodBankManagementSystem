@@ -15,27 +15,38 @@ router.post('/send', authMiddleware, async (req, res) => {
     let query = `
       SELECT DISTINCT u.id
       FROM users u
-      JOIN user_profiles up ON u.id = up.user_id
-      WHERE 1=1
-      AND (
-        (up.notification_preference = 'receiveAll')
-        OR (up.notification_preference = 'receiveAreaOnly' AND up.area = ?)
-      )
+      LEFT JOIN user_profiles up ON u.id = up.user_id
+      WHERE u.role = 'user'
     `;
-    const queryParams = [area];
+    const queryParams = [];
 
-    if (bloodType) {
-      query += ` AND (up.blood_type = ? OR up.blood_type = 'UNKNOWN')`;
-      queryParams.push(bloodType);
+    // Add notification preference conditions
+    if (area && area.length > 0) {
+      const areaPlaceholders = area.map(() => '?').join(',');
+      query += ` AND (
+        up.notification_preference = 'receiveAll'
+        OR (up.notification_preference = 'receiveImportant' AND up.area IN (${areaPlaceholders}))
+        OR up.notification_preference IS NULL
+      )`;
+      queryParams.push(...area);
+    } else {
+      query += ` AND (up.notification_preference = 'receiveAll' OR up.notification_preference IS NULL)`;
     }
 
-    if (area) {
-      query += ` AND (up.area = ? OR up.notification_preference = 'receiveAll')`;
-      queryParams.push(area);
+    if (bloodType && bloodType.length > 0) {
+      const bloodTypePlaceholders = bloodType.map(() => '?').join(',');
+      query += ` AND (up.blood_type IN (${bloodTypePlaceholders}) OR up.blood_type IS NULL)`;
+      queryParams.push(...bloodType);
+    }
+
+    if (area && area.length > 0) {
+      const areaPlaceholders = area.map(() => '?').join(',');
+      query += ` AND up.area IN (${areaPlaceholders})`;
+      queryParams.push(...area);
     }
 
     // Exclude users who have opted out
-    query += ` AND up.notification_preference != 'receiveNone'`;
+    query += ` AND (up.notification_preference != 'receiveNone' OR up.notification_preference IS NULL)`;
 
     // Get users matching filters
     const [users] = await connection.query(query, queryParams);
@@ -113,39 +124,43 @@ router.post('/check-recipients', authMiddleware, async (req, res) => {
   
       connection = await pool.getConnection();
   
-      let query = `
+            let query = `
         SELECT COUNT(DISTINCT u.id) as count
         FROM users u
-        JOIN user_profiles up ON u.id = up.user_id
-        WHERE 1=1
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE u.role = 'user'
       `;
       const queryParams = [];
-  
+
       // Add notification preference conditions
-      if (area) {
+      if (area && area.length > 0) {
+        const areaPlaceholders = area.map(() => '?').join(',');
         query += ` AND (
           up.notification_preference = 'receiveAll'
-          OR (up.notification_preference = 'receiveAreaOnly' AND up.area = ?)
+          OR (up.notification_preference = 'receiveImportant' AND up.area IN (${areaPlaceholders}))
+          OR up.notification_preference IS NULL
         )`;
-        queryParams.push(area);
+        queryParams.push(...area);
       } else {
-        query += ` AND up.notification_preference = 'receiveAll'`;
+        query += ` AND (up.notification_preference = 'receiveAll' OR up.notification_preference IS NULL)`;
       }
-  
+
       // Add blood type filter
-      if (bloodType) {
-        query += ` AND (up.blood_type = ? OR up.blood_type = 'UNKNOWN')`;
-        queryParams.push(bloodType);
+      if (bloodType && bloodType.length > 0) {
+        const bloodTypePlaceholders = bloodType.map(() => '?').join(',');
+        query += ` AND (up.blood_type IN (${bloodTypePlaceholders}) OR up.blood_type IS NULL)`;
+        queryParams.push(...bloodType);
       }
-  
+
       // Add area filter
-      if (area) {
-        query += ` AND up.area = ?`;
-        queryParams.push(area);
+      if (area && area.length > 0) {
+        const areaPlaceholders = area.map(() => '?').join(',');
+        query += ` AND up.area IN (${areaPlaceholders})`;
+        queryParams.push(...area);
       }
-  
+
       // Exclude users who opted out
-      query += ` AND up.notification_preference != 'receiveNone'`;
+      query += ` AND (up.notification_preference != 'receiveNone' OR up.notification_preference IS NULL)`;
   
       const [result] = await connection.query(query, queryParams);
   
@@ -164,5 +179,78 @@ router.post('/check-recipients', authMiddleware, async (req, res) => {
       if (connection) connection.release();
     }
   });
+
+router.post('/recipient-details', authMiddleware, async (req, res) => {
+  let connection;
+  try {
+    const { filters } = req.body;
+    const { bloodType, area } = filters;
+
+    connection = await pool.getConnection();
+
+    let query = `
+      SELECT DISTINCT 
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        up.blood_type,
+        up.area
+      FROM users u
+      LEFT JOIN user_profiles up ON u.id = up.user_id
+      WHERE u.role = 'user'
+    `;
+    const queryParams = [];
+
+    // Add notification preference conditions
+    if (area && area.length > 0) {
+      const areaPlaceholders = area.map(() => '?').join(',');
+      query += ` AND (
+        up.notification_preference = 'receiveAll'
+        OR (up.notification_preference = 'receiveImportant' AND up.area IN (${areaPlaceholders}))
+        OR up.notification_preference IS NULL
+      )`;
+      queryParams.push(...area);
+    } else {
+      query += ` AND (up.notification_preference = 'receiveAll' OR up.notification_preference IS NULL)`;
+    }
+
+    // Add blood type filter
+    if (bloodType && bloodType.length > 0) {
+      const bloodTypePlaceholders = bloodType.map(() => '?').join(',');
+      query += ` AND (up.blood_type IN (${bloodTypePlaceholders}) OR up.blood_type IS NULL)`;
+      queryParams.push(...bloodType);
+    }
+
+    // Add area filter
+    if (area && area.length > 0) {
+      const areaPlaceholders = area.map(() => '?').join(',');
+      query += ` AND up.area IN (${areaPlaceholders})`;
+      queryParams.push(...area);
+    }
+
+    // Exclude users who opted out
+    query += ` AND (up.notification_preference != 'receiveNone' OR up.notification_preference IS NULL)`;
+    
+    // Order by name for consistent results
+    query += ` ORDER BY u.name ASC`;
+
+    const [recipients] = await connection.query(query, queryParams);
+
+    res.json({
+      success: true,
+      recipients: recipients
+    });
+
+  } catch (error) {
+    console.error('Error fetching recipient details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch recipient details'
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
 
 module.exports = router;
