@@ -29,6 +29,7 @@ import './styles/index.css';
 import Appointments from './pages/user/Appointment';
 import ScrollToTop from './components/common/ScrollToTop';
 import PageNotFound from './pages/common/PageNotFound';
+import Chatbot from './components/common/Chatbot';
 
 //Admin Side
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
@@ -44,6 +45,7 @@ import MessageManagement from './pages/admin/MessageManagement';
 import SettingsPage from './pages/admin/PermissionSetting.jsx';
 import Reports from './pages/admin/Reports';
 import AuditTrail from './pages/admin/AuditTrail';
+import ChatbotAnalytics from './pages/admin/ChatbotAnalytics';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,12 +116,14 @@ function App() {
                 <Route path="/admin/messages" element={<AdminRoute><AdminDashboardLayout><MessageManagement /></AdminDashboardLayout></AdminRoute>} />
                 <Route path="/admin/reports" element={<AdminRoute requiredPermission="can_manage_reports"><Reports /></AdminRoute>} />
                 <Route path="/admin/audit-trail" element={<SuperAdminRoute><AuditTrail /></SuperAdminRoute>} />
+                <Route path="/admin/chatbot-analytics" element={<AdminRoute><ChatbotAnalytics /></AdminRoute>} />
                 <Route path="/register" element={<Register />} />
                 {/* Catch-all route for undefined pages */}
                 <Route path="*" element={<PageNotFound />} />
               </Routes>
             </main>
             </Layout>
+            <Chatbot />
           </div>
         </Router>
       </AuthProvider>

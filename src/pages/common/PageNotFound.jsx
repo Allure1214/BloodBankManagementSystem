@@ -6,7 +6,8 @@ import {
   Search, 
   Heart,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  MessageCircle
 } from 'lucide-react';
 
 const PageNotFound = () => {
@@ -120,6 +121,24 @@ const PageNotFound = () => {
               <RefreshCw className="w-4 h-4" />
               View FAQs
             </Link>
+            <button
+              onClick={() => {
+                // Scroll to bottom to show chatbot
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                // Trigger chatbot open after a short delay
+                setTimeout(() => {
+                  const chatbotButton = document.querySelector('[aria-label="Open chatbot"]');
+                  if (chatbotButton) {
+                    chatbotButton.click();
+                  }
+                }, 500);
+              }}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-700 rounded-lg 
+                       hover:bg-blue-100 transition-all duration-300 font-medium"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Ask Our AI Assistant
+            </button>
           </div>
         </div>
 

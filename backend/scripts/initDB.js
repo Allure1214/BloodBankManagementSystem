@@ -208,6 +208,22 @@ async function initializeDatabase() {
       )
     `);
 
+    // Create Chatbot Conversations table
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS chatbot_conversations (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        user_message TEXT NOT NULL,
+        bot_response TEXT NOT NULL,
+        intent VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_intent (intent),
+        INDEX idx_created_at (created_at)
+      )
+    `);
+
     // Create default admin user
     const hashedPassword = await require('bcryptjs').hash('admin123', 10);
     await connection.query(`

@@ -223,6 +223,12 @@ const AdminDashboardLayout = ({ children }) => {
         keywords: ['reports', 'analytics', 'statistics', 'data']
       },
       {
+        title: 'Chatbot Analytics',
+        icon: MessageSquare,
+        path: '/admin/chatbot-analytics',
+        keywords: ['chatbot', 'ai', 'conversations', 'assistant', 'analytics']
+      },
+      {
         title: 'Audit Trail',
         icon: ShieldCheck,
         path: '/admin/audit-trail',

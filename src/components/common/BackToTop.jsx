@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
+import './Chatbot.css';
 
 const BackToTop = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -69,7 +70,7 @@ const BackToTop = () => {
           type="button"
           disabled={isScrolling}
           className={`
-            fixed bottom-8 right-8
+            fixed bottom-8 right-8 back-to-top-button
             bg-red-600 hover:bg-red-700
             text-white
             w-12 h-12
