@@ -59,50 +59,46 @@ router.put('/inventory/update', authMiddleware, checkPermission('can_manage_inve
 }), async (req, res) => {
   let connection;
   try {
-    const { bankId, bloodType, operation, units } = req.body;
-    
-    if (!bankId || !bloodType || !operation || !units) {
+    const bankId = Number(req.body.bankId);
+    const units = Number(req.body.units);
+    const { bloodType, operation } = req.body;
+    const validBloodTypes = new Set(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
+
+    if (
+      !Number.isInteger(bankId) ||
+      !Number.isInteger(units) ||
+      units <= 0 ||
+      !validBloodTypes.has(bloodType) ||
+      !['add', 'subtract'].includes(operation)
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: 'Invalid bank, blood type, operation, or unit count'
       });
     }
 
     connection = await pool.getConnection();
-    
-    // Get current inventory
-    const [currentInventory] = await connection.query(
-      'SELECT units_available FROM blood_inventory WHERE blood_bank_id = ? AND blood_type = ?',
-      [bankId, bloodType]
-    );
 
-    if (currentInventory.length === 0) {
-      return res.status(404).json({
+    const sql = operation === 'add'
+      ? `UPDATE blood_inventory
+         SET units_available = units_available + ?, last_updated = CURRENT_TIMESTAMP
+         WHERE blood_bank_id = ? AND blood_type = ?`
+      : `UPDATE blood_inventory
+         SET units_available = units_available - ?, last_updated = CURRENT_TIMESTAMP
+         WHERE blood_bank_id = ? AND blood_type = ? AND units_available >= ?`;
+    const params = operation === 'add'
+      ? [units, bankId, bloodType]
+      : [units, bankId, bloodType, units];
+    const [result] = await connection.query(sql, params);
+
+    if (result.affectedRows !== 1) {
+      return res.status(409).json({
         success: false,
-        message: 'Inventory record not found'
+        message: operation === 'subtract'
+          ? 'Inventory missing or insufficient'
+          : 'Inventory record not found'
       });
     }
-
-    // Calculate new units
-    let newUnits = operation === 'add' 
-      ? currentInventory[0].units_available + units
-      : currentInventory[0].units_available - units;
-
-    // Prevent negative inventory
-    if (newUnits < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Insufficient units available'
-      });
-    }
-
-    // Update inventory
-    await connection.query(
-      `UPDATE blood_inventory 
-       SET units_available = ?, last_updated = CURRENT_TIMESTAMP 
-       WHERE blood_bank_id = ? AND blood_type = ?`,
-      [newUnits, bankId, bloodType]
-    );
 
     // Get blood bank name for response
     const [bloodBanks] = await connection.query(

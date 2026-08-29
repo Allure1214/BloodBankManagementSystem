@@ -212,7 +212,7 @@ const DonationManagement = () => {
         
             const fetchDonors = async () => {
                 try {
-                    const token = sessionStorage.getItem('token');
+                    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
                     const response = await fetch('http://localhost:5000/api/admin/donations/users/donors', {
                         headers: {
                             'Authorization': `Bearer ${token}`
@@ -337,38 +337,16 @@ const DonationManagement = () => {
                         throw new Error('Failed to add donation');
                     }
             
-                    // If donation is added successfully and donor had unknown blood type, update their profile
+                    // Donation creation updates a previously unknown donor blood type in the same DB transaction.
                     const selectedDonor = donors.find(donor => donor.id.toString() === formData.donor_id);
                     if (selectedDonor && (!selectedDonor.blood_type || selectedDonor.blood_type === 'UNKNOWN')) {
-                        // Use the new endpoint to update blood type
-                        const updateBloodTypeResponse = await fetch(
-                            `http://localhost:5000/api/user/update-blood-type/${formData.donor_id}`, 
-                            {
-                                method: 'PUT',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    bloodType: formData.blood_type
-                                })
-                            }
+                        setDonors(prevDonors =>
+                            prevDonors.map(donor =>
+                                donor.id.toString() === formData.donor_id
+                                    ? { ...donor, blood_type: formData.blood_type }
+                                    : donor
+                            )
                         );
-            
-                        if (!updateBloodTypeResponse.ok) {
-                            console.error('Failed to update user blood type');
-                            const errorData = await updateBloodTypeResponse.json();
-                            console.error('Blood type update error:', errorData);
-                        } else {
-                            // If blood type update was successful, update the local donors state
-                            setDonors(prevDonors => 
-                                prevDonors.map(donor => 
-                                    donor.id.toString() === formData.donor_id
-                                        ? { ...donor, blood_type: formData.blood_type }
-                                        : donor
-                                )
-                            );
-                        }
                     }
             
                     setSuccessMessage('Donation added successfully!');

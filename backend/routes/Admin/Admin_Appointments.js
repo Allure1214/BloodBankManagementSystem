@@ -127,7 +127,7 @@ router.put('/:id/complete-donation', authMiddleware, checkPermission('can_manage
 });
 
 // Get single appointment details
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', authMiddleware, checkPermission('can_manage_appointments'), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -343,7 +343,7 @@ router.get('/time-slots/:campaignId/:date', async (req, res) => {
   }
 });
 
-router.put('/:id/update-time', authMiddleware, async (req, res) => {
+router.put('/:id/update-time', authMiddleware, checkPermission('can_manage_appointments'), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -356,8 +356,8 @@ router.put('/:id/update-time', authMiddleware, async (req, res) => {
       `SELECT cr.*, c.location 
        FROM campaign_reservations cr
        JOIN campaigns c ON cr.campaign_id = c.id
-       WHERE cr.id = ? AND cr.user_id = ?`,
-      [id, req.user.id]
+       WHERE cr.id = ?`,
+      [id]
     );
 
     if (appointment.length === 0) {

@@ -35,7 +35,7 @@ async function initializeDatabase() {
     await connection.query(`
       CREATE TABLE IF NOT EXISTS user_profiles (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id INT NOT NULL,
+        user_id INT NOT NULL UNIQUE,
         blood_type ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'),
         date_of_birth DATE,
         gender ENUM('male', 'female', 'other'),
@@ -62,11 +62,13 @@ async function initializeDatabase() {
     await connection.query(`
       CREATE TABLE IF NOT EXISTS blood_inventory (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        blood_bank_id INT,
+        blood_bank_id INT NOT NULL,
         blood_type ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-') NOT NULL,
-        units_available INT DEFAULT 0,
+        units_available INT NOT NULL DEFAULT 0,
         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (blood_bank_id) REFERENCES blood_banks(id)
+        CONSTRAINT chk_inventory_nonnegative CHECK (units_available >= 0),
+        CONSTRAINT uq_bank_blood_type UNIQUE (blood_bank_id, blood_type),
+        FOREIGN KEY (blood_bank_id) REFERENCES blood_banks(id) ON DELETE CASCADE
       );
     `);
 
@@ -74,13 +76,14 @@ async function initializeDatabase() {
     await connection.query(`
       CREATE TABLE IF NOT EXISTS admin_permissions (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        user_id INT NOT NULL,
+        user_id INT NOT NULL UNIQUE,
         can_manage_users BOOLEAN DEFAULT FALSE,
         can_manage_inventory BOOLEAN DEFAULT FALSE,
         can_manage_campaigns BOOLEAN DEFAULT FALSE,
         can_manage_blood_banks BOOLEAN DEFAULT FALSE,
         can_manage_donations BOOLEAN DEFAULT FALSE,
         can_manage_appointments BOOLEAN DEFAULT FALSE,
+        can_manage_notifications BOOLEAN DEFAULT FALSE,
         can_manage_reports BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )

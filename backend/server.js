@@ -1,36 +1,53 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2');
+const rateLimit = require('express-rate-limit');
 const campaignRoutes = require('./routes/campaigns');
 const dashboardRoutes = require('./routes/dashboard');
 const messagesRoutes = require('./routes/messages');  
 const authMiddleware = require('./middleware/auth');
 require('dotenv').config();
 
+const requiredProductionEnv = [
+  'DB_HOST',
+  'DB_USER',
+  'DB_PASSWORD',
+  'DB_NAME',
+  'JWT_SECRET',
+  'CORS_ORIGINS'
+];
+
+if (process.env.NODE_ENV === 'production') {
+  for (const key of requiredProductionEnv) {
+    if (!process.env[key]) {
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
+  }
+}
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 characters');
+}
+
 const app = express();
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean)
+);
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000', // Your frontend URL
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error('Origin not allowed by CORS'));
+  },
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 const bloodBankRoutes = require('./routes/bloodBank');
 app.use('/api/blood-banks', bloodBankRoutes);
-
-// Database connection
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
-}).promise();
-
-// Test database connection
-db.connect()
-  .then(() => console.log('Database connected successfully'))
-  .catch(err => console.error('Database connection error:', err));
 
 // Test route
 app.get('/api/test', (req, res) => {
@@ -38,13 +55,18 @@ app.get('/api/test', (req, res) => {
 });
 
 // Auth routes
-app.use('/api/auth', require('./routes/auth'));
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/user', authMiddleware, require('./routes/user'));
-console.log('JWT_SECRET status:', process.env.JWT_SECRET ? 'Set' : 'Not set');
 app.use('/api/admin', require('./routes/Admin/Admin_Dashboard'));
 app.use('/api/admin/users', require('./routes/Admin/Admin_Users'));
 app.use('/api/admin', require('./routes/Admin/Admin_Inventory'));
@@ -80,4 +102,3 @@ app.use((err, req, res, next) => {
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
-

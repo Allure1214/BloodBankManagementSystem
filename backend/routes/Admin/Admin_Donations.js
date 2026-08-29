@@ -49,7 +49,7 @@ router.get('/', authMiddleware, checkPermission('can_manage_donations'), async (
 });
 
 // Get single donation details
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', authMiddleware, checkPermission('can_manage_donations'), async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -125,30 +125,46 @@ router.put('/:id', authMiddleware, checkPermission('can_manage_donations'), audi
   try {
     const { id } = req.params;
     const { status, health_screening_notes } = req.body;
+    const allowedStatuses = new Set(['Pending', 'Completed', 'Cancelled']);
 
-    if (!status) {
+    if (!allowedStatuses.has(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Status is required'
+        message: 'Status must be Pending, Completed, or Cancelled'
       });
     }
 
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
-    // Check if donation exists
+    // Lock the donation so concurrent completion requests cannot credit stock twice.
     const [existing] = await connection.query(
-      'SELECT id FROM donations WHERE id = ?',
+      `SELECT status, blood_bank_id, blood_type, quantity_ml
+       FROM donations
+       WHERE id = ?
+       FOR UPDATE`,
       [id]
     );
 
     if (existing.length === 0) {
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: 'Donation not found'
       });
     }
 
-    // Update donation
+    const donation = existing[0];
+    if (donation.status === 'Completed' && status !== 'Completed') {
+      await connection.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'A completed donation cannot be reopened without reversing its stock movement'
+      });
+    }
+
+    const isNewCompletion = donation.status !== 'Completed' && status === 'Completed';
+
     await connection.query(
       `UPDATE donations 
        SET status = ?, health_screening_notes = ?
@@ -156,37 +172,36 @@ router.put('/:id', authMiddleware, checkPermission('can_manage_donations'), audi
       [status, health_screening_notes || null, id]
     );
 
-    // If status is 'Completed', update blood inventory
-    if (status === 'Completed') {
-      const [donationDetails] = await connection.query(
-        `SELECT blood_bank_id, blood_type, quantity_ml 
-         FROM donations 
-         WHERE id = ?`,
-        [id]
+    if (isNewCompletion) {
+      const creditedUnits = Math.floor(Number(donation.quantity_ml) / 450);
+      if (creditedUnits <= 0) {
+        throw new Error('Completed donation does not contain one full 450 ml unit');
+      }
+
+      const [inventoryResult] = await connection.query(
+        `UPDATE blood_inventory
+         SET units_available = units_available + ?,
+             last_updated = CURRENT_TIMESTAMP
+         WHERE blood_bank_id = ? AND blood_type = ?`,
+        [creditedUnits, donation.blood_bank_id, donation.blood_type]
       );
 
-      if (donationDetails.length > 0) {
-        const { blood_bank_id, blood_type, quantity_ml } = donationDetails[0];
-        
-        // Update blood inventory
-        await connection.query(
-          `UPDATE blood_inventory 
-           SET units_available = units_available + ?,
-               last_updated = CURRENT_TIMESTAMP
-           WHERE blood_bank_id = ? AND blood_type = ?`,
-          [Math.floor(quantity_ml / 450), blood_bank_id, blood_type]
-        );
+      if (inventoryResult.affectedRows !== 1) {
+        throw new Error('Matching inventory record not found');
       }
     }
 
-    res.json({
+    await connection.commit();
+
+    return res.json({
       success: true,
       message: 'Donation updated successfully'
     });
 
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error('Error updating donation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to update donation'
     });
@@ -196,7 +211,7 @@ router.put('/:id', authMiddleware, checkPermission('can_manage_donations'), audi
 });
 
 // Get donation statistics
-router.get('/stats/summary', authMiddleware, async (req, res) => {
+router.get('/stats/summary', authMiddleware, checkPermission('can_manage_donations'), async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
@@ -288,6 +303,14 @@ router.post('/', authMiddleware, checkPermission('can_manage_donations'), auditL
       [donor_id, blood_bank_id, donation_date, blood_type, quantity_ml, health_screening_notes || null]
     );
 
+    // Record a newly established blood type without overwriting an existing profile value.
+    await connection.query(
+      `UPDATE user_profiles
+       SET blood_type = ?
+       WHERE user_id = ? AND blood_type IS NULL`,
+      [blood_type, donor_id]
+    );
+
     // Get donor details for notification
     const [donors] = await connection.query(
       `SELECT name FROM users WHERE id = ?`,
@@ -340,7 +363,7 @@ router.post('/', authMiddleware, checkPermission('can_manage_donations'), auditL
 });
 
 // Add route to get donors
-router.get('/users/donors', authMiddleware, async (req, res) => {
+router.get('/users/donors', authMiddleware, checkPermission('can_manage_donations'), async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();

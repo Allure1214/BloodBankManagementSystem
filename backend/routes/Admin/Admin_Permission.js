@@ -30,6 +30,7 @@ router.get('/normal-admins', authMiddleware, async (req, res) => {
         ap.can_manage_blood_banks,
         ap.can_manage_donations,
         ap.can_manage_appointments,
+        ap.can_manage_notifications,
         ap.can_manage_reports
       FROM users u
       LEFT JOIN admin_permissions ap ON u.id = ap.user_id
@@ -49,6 +50,7 @@ router.get('/normal-admins', authMiddleware, async (req, res) => {
         can_manage_blood_banks: Boolean(admin.can_manage_blood_banks),
         can_manage_donations: Boolean(admin.can_manage_donations),
         can_manage_appointments: Boolean(admin.can_manage_appointments),
+        can_manage_notifications: Boolean(admin.can_manage_notifications),
         can_manage_reports: Boolean(admin.can_manage_reports)
       }
     }));
@@ -82,7 +84,28 @@ router.put('/:adminId', authMiddleware, async (req, res) => {
     }
 
     const { adminId } = req.params;
-    const permissions = req.body;
+    const allowedPermissions = new Set([
+      'can_manage_inventory',
+      'can_manage_campaigns',
+      'can_manage_blood_banks',
+      'can_manage_donations',
+      'can_manage_appointments',
+      'can_manage_notifications',
+      'can_manage_reports'
+    ]);
+    const permissionEntries = Object.entries(req.body);
+    if (
+      permissionEntries.length === 0 ||
+      permissionEntries.some(([key, value]) =>
+        !allowedPermissions.has(key) || typeof value !== 'boolean'
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Permissions must contain only supported boolean fields'
+      });
+    }
+    const permissions = Object.fromEntries(permissionEntries);
 
     connection = await pool.getConnection();
     await connection.beginTransaction();
@@ -119,8 +142,8 @@ router.put('/:adminId', authMiddleware, async (req, res) => {
       // Insert new permissions
       await connection.query(
         `INSERT INTO admin_permissions 
-         SET ?, user_id = ?`,
-        [{ ...permissions, user_id: adminId }, adminId]
+         SET ?`,
+        [{ ...permissions, user_id: adminId }]
       );
     }
 

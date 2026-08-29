@@ -110,10 +110,10 @@ const CampaignReservationModal = ({ campaign, isOpen, onClose, onSubmit }) => {
     const checkUserStatus = async () => {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/campaigns/check-eligibility/${user.id}`,
+          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/campaigns/check-eligibility`,
           {
             headers: {
-              'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+              'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
             }
           }
         );
@@ -215,16 +215,15 @@ const CampaignReservationModal = ({ campaign, isOpen, onClose, onSubmit }) => {
   setError('');
 
   try {
-    const response = await fetch('http://localhost:5000/api/campaigns/reserve', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/campaigns/reserve`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
       },
       body: JSON.stringify({
         campaign_id: campaign.id,
         ...formData,
-        user_id: user.id
       }),
     });
 
@@ -254,10 +253,10 @@ const CampaignReservationModal = ({ campaign, isOpen, onClose, onSubmit }) => {
     if (user) {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/campaigns/check-reservation/${user.id}`,
+          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/campaigns/check-reservation`,
           {
             headers: {
-              'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+              'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
             }
           }
         );

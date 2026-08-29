@@ -334,7 +334,7 @@ router.post('/', authMiddleware, checkPermission('can_manage_users'), auditLogge
   }
 });
 
-router.get('/permissions', async (req, res) => {
+router.get('/permissions', authMiddleware, async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
@@ -350,6 +350,7 @@ router.get('/permissions', async (req, res) => {
           can_manage_blood_banks: true,
           can_manage_donations: true,
           can_manage_appointments: true,
+          can_manage_notifications: true,
           can_manage_reports: true
         }
       });

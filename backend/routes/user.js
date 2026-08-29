@@ -361,11 +361,19 @@ router.put('/change-password', async (req, res) => {
   }
 });
 
-router.put('/update-blood-type/:userId', authMiddleware, async (req, res) => {
+router.put('/update-blood-type', async (req, res) => {
   let connection;
   try {
-    const { userId } = req.params;
+    const userId = req.user.id;
     const { bloodType } = req.body;
+
+    const allowedBloodTypes = new Set(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
+    if (!allowedBloodTypes.has(bloodType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid blood type'
+      });
+    }
 
     connection = await pool.getConnection();
     

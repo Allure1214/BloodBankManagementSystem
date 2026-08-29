@@ -2,6 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
+const authMiddleware = require('../middleware/auth');
+const checkPermission = require('../middleware/checkPermission');
 
 const formatDateForMySQL = (dateString) => {
   // Handle MM/DD/YYYY format
@@ -14,12 +16,11 @@ const formatDateForMySQL = (dateString) => {
   return dateString;
 };
 
-router.post('/reserve', async (req, res) => {
+router.post('/reserve', authMiddleware, async (req, res) => {
   let connection;
   try {
     const { 
       campaign_id, 
-      user_id, 
       name, 
       email, 
       phone, 
@@ -27,6 +28,7 @@ router.post('/reserve', async (req, res) => {
       preferred_time, 
       session_date 
     } = req.body;
+    const user_id = req.user.id;
 
     // Format the date properly for MySQL
     const formattedDate = formatDateForMySQL(session_date);
@@ -99,10 +101,10 @@ router.post('/reserve', async (req, res) => {
   }
 });
 
-router.get('/check-reservation/:userId', async (req, res) => {
+router.get('/check-reservation', authMiddleware, async (req, res) => {
   let connection;
   try {
-    const { userId } = req.params;
+    const userId = req.user.id;
     
     connection = await pool.getConnection();
     
@@ -165,49 +167,60 @@ router.get('/check-reservation/:userId', async (req, res) => {
   }
 });
 
-router.put('/complete-donation/:reservationId', async (req, res) => {
-  let connection;
-  try {
-    const { reservationId } = req.params;
-    
-    connection = await pool.getConnection();
-    
-    const completionDate = new Date();
-    const nextEligibleDate = new Date();
-    nextEligibleDate.setMonth(nextEligibleDate.getMonth() + 3);
+router.put(
+  '/complete-donation/:reservationId',
+  authMiddleware,
+  checkPermission('can_manage_appointments'),
+  async (req, res) => {
+    let connection;
+    try {
+      const { reservationId } = req.params;
+      connection = await pool.getConnection();
 
-    await connection.query(
-      `UPDATE campaign_reservations 
-       SET donation_completed = TRUE,
-           donation_completed_date = ?,
-           next_eligible_date = ?,
-           status = 'completed'
-       WHERE id = ?`,
-      [completionDate, nextEligibleDate, reservationId]
-    );
+      const completionDate = new Date();
+      const nextEligibleDate = new Date();
+      nextEligibleDate.setMonth(nextEligibleDate.getMonth() + 3);
 
-    res.json({
-      success: true,
-      message: 'Donation marked as completed',
-      nextEligibleDate
-    });
+      const [result] = await connection.query(
+        `UPDATE campaign_reservations
+         SET donation_completed = TRUE,
+             donation_completed_date = ?,
+             next_eligible_date = ?
+         WHERE id = ?
+           AND donation_completed = FALSE
+           AND status = 'confirmed'`,
+        [completionDate, nextEligibleDate, reservationId]
+      );
 
-  } catch (error) {
-    console.error('Error completing donation:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to complete donation'
-    });
-  } finally {
-    if (connection) connection.release();
+      if (result.affectedRows === 0) {
+        return res.status(409).json({
+          success: false,
+          message: 'Reservation is missing, not confirmed, or already completed'
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Donation marked as completed',
+        nextEligibleDate
+      });
+    } catch (error) {
+      console.error('Error completing donation:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to complete donation'
+      });
+    } finally {
+      if (connection) connection.release();
+    }
   }
-});
+);
 
 // Update check-eligibility endpoint
-router.get('/check-eligibility/:userId', async (req, res) => {
+router.get('/check-eligibility', authMiddleware, async (req, res) => {
   let connection;
   try {
-    const { userId } = req.params;
+    const userId = req.user.id;
     
     connection = await pool.getConnection();
     
@@ -269,10 +282,11 @@ router.get('/check-eligibility/:userId', async (req, res) => {
   }
 });
 
-router.get('/:campaignId/check-reservation/:userId', async (req, res) => {
+router.get('/:campaignId/check-reservation', authMiddleware, async (req, res) => {
   let connection;
   try {
-    const { campaignId, userId } = req.params;
+    const { campaignId } = req.params;
+    const userId = req.user.id;
     
     connection = await pool.getConnection();
     
