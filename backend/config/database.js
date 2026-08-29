@@ -4,9 +4,13 @@ require('dotenv').config();
 
 const dbConfig = {
     host: process.env.DB_HOST || (process.env.NODE_ENV !== 'production' ? 'localhost' : undefined),
+    port: Number(process.env.DB_PORT) || 25492,
     user: process.env.DB_USER || (process.env.NODE_ENV !== 'production' ? 'root' : undefined),
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || (process.env.NODE_ENV !== 'production' ? 'blood_bank_db' : undefined),
+    ssl: process.env.NODE_ENV === 'production' || process.env.DB_HOST?.includes('aivencloud') 
+      ? { rejectUnauthorized: false } 
+      : undefined,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
