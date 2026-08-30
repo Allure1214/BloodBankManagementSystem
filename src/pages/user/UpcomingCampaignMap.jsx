@@ -22,11 +22,31 @@ const userIcon = createCustomIcon('red');
 const campaignIcon = createCustomIcon('blue');
 const highlightedIcon = createCustomIcon('gold');
 
-function MapFocus({ position, trigger }) {
+const SAME_LOCATION_TOLERANCE = 0.0001;
+
+function MapFocus({ latitude, longitude }) {
   const map = useMap();
+
   useEffect(() => {
-    if (position) map.flyTo(position, 15, { duration: 2 });
-  }, [position, map, trigger]);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+    const currentCenter = map.getCenter();
+    const isAlreadyAtTarget =
+      Math.abs(currentCenter.lat - latitude) < SAME_LOCATION_TOLERANCE &&
+      Math.abs(currentCenter.lng - longitude) < SAME_LOCATION_TOLERANCE;
+
+    if (isAlreadyAtTarget) return;
+
+    map.stop();
+    map.flyTo([latitude, longitude], 15, {
+      animate: true,
+      duration: 1.5,
+      easeLinearity: 0.25,
+    });
+
+    return () => map.stop();
+  }, [latitude, longitude, map]);
+
   return null;
 }
 
@@ -44,7 +64,6 @@ const CampaignMap = () => {
   const lastErrorCodeRef = useRef(null);
   const lastWatchErrorAtRef = useRef(0);
   const [hoveredCampaignId, setHoveredCampaignId] = useState(null);
-  const [recenterTrigger, setRecenterTrigger] = useState(0);
   const mapAreaRef = useRef(null);
   const listAreaRef = useRef(null);
   const [panelHeight, setPanelHeight] = useState(560);
@@ -352,7 +371,7 @@ const CampaignMap = () => {
               />
               {userLocation && (
                 <Marker position={userLocation} icon={userIcon}>
-                  <Popup>Your Location</Popup>
+                  <Popup autoPan={false}>Your Location</Popup>
                 </Marker>
               )}
               {campaigns.map((campaign) => (
@@ -370,7 +389,7 @@ const CampaignMap = () => {
                     mouseout: () => setHoveredCampaignId(null),
                   }}
                 >
-                  <Popup>
+                  <Popup autoPan={false}>
                     <div className="p-2 min-w-[200px]">
                       <h3 className="font-semibold text-gray-900">{campaign.location}</h3>
                       <p className="text-sm text-gray-600 mt-1">{campaign.address}</p>
@@ -392,8 +411,8 @@ const CampaignMap = () => {
                 </Marker>
               ))}
               <MapFocus
-                position={selectedCampaign ? [selectedCampaign.latitude, selectedCampaign.longitude] : userLocation}
-                trigger={recenterTrigger}
+                latitude={selectedCampaign ? Number(selectedCampaign.latitude) : userLocation?.[0]}
+                longitude={selectedCampaign ? Number(selectedCampaign.longitude) : userLocation?.[1]}
               />
             </MapContainer>
           </div>
