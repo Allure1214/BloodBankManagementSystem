@@ -31,6 +31,10 @@ const MapRecenter = memo(function MapRecenter({ latitude, longitude, zoom = 15 }
   useEffect(() => {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
+    // Route changes can detach Leaflet's panes before React finishes running
+    // child effects. Do not call camera methods once the map pane is gone.
+    if (!map.getPane('mapPane')) return;
+
     const previousTarget = previousTargetRef.current;
     const targetHasNotChanged =
       previousTarget &&
@@ -56,8 +60,6 @@ const MapRecenter = memo(function MapRecenter({ latitude, longitude, zoom = 15 }
       easeLinearity: 0.25,
       noMoveStart: true,
     });
-
-    return () => map.stop();
   }, [latitude, longitude, zoom, map]);
 
   return null;
