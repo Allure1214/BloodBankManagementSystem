@@ -1,242 +1,590 @@
-# Blood Bank Management System 🩸
+# Blood Bank Management System
 
-A comprehensive web-based Blood Bank Management System built with React and Node.js that helps connect blood donors with blood banks and manages blood donation campaigns.
+A full-stack blood donation and blood-bank management application built with React, Express, and MySQL.
 
-**Version**: 1.0.2  
-**Status**: Production Ready ✅
+The application supports donor accounts, donation campaigns, appointment reservations, donation records, aggregate blood inventory, notifications, reporting, audit logs, and granular administrator permissions.
 
-## Features 🌟
+> This repository is a functional application prototype. It is not a certified hospital blood-bank or transfusion-management system. Inventory is modeled as aggregate counts by blood bank and blood type; individual blood units, laboratory screening, quarantine, crossmatching, and expiration are not modeled.
 
-### For Users
-- **User Registration & Authentication** 
-  - Secure login/signup system
-  - Password reset functionality
-  - Role-based access control (Admin/User)
+## Features
 
-- **Blood Donation Management**
-  - View upcoming donation campaigns
-  - Schedule donation appointments
-  - Track donation history
-  - Receive notifications for donation opportunities
+### Donor features
 
-- **Blood Bank Directory**
-  - Search blood banks by location
-  - View real-time blood inventory
-  - Check blood availability by type
-  - Get directions to blood banks
+- Account registration and JWT-based authentication
+- Password reset using an OTP workflow
+- Donor profile and blood-type management
+- Upcoming donation campaign discovery
+- Campaign reservation and appointment management
+- Donation eligibility checks based on recorded completion dates
+- Donation history and statistics
+- Blood-bank directory and blood availability search
+- User notifications
+- Contact form
+- Rule-based blood donation chatbot
 
-### For Administrators
-- **Dashboard Analytics**
-  - Real-time blood inventory tracking
-  - Donation statistics and trends
-  - User activity monitoring
-  - Interactive charts and visualizations
+### Administrator features
 
-- **Campaign Management**
-  - Create and manage donation campaigns
-  - Track campaign performance
-  - Manage appointment schedules
-  - Interactive campaign maps
+- Dashboard statistics and charts
+- Campaign and campaign-session management
+- Appointment confirmation, cancellation, and completion
+- Donation record creation and status management
+- Aggregate blood inventory adjustment
+- Blood-bank management
+- User administration and account deactivation
+- Granular administrator permissions
+- Bulk notification management
+- Contact-message management
+- Audit-log inspection
+- PDF and Excel report exports
+- Chatbot analytics
 
-- **Inventory Management**
-  - Track blood units by type
-  - Monitor expiration dates
-  - Manage blood bank locations
-  - Automated inventory alerts
+### Inventory model
 
-- **Advanced Features**
-  - **Audit Trail System** - Complete activity logging and tracking
-  - **Permission Management** - Granular role-based access control
-  - **Messaging System** - Internal communication platform
-  - **Notification Management** - Bulk notifications and alerts
-  - **Advanced Reporting** - PDF and Excel export capabilities
-  - **User Management** - Comprehensive user administration
-  - **Email Integration** - Automated email notifications
+Inventory is stored as one aggregate count for each blood-bank and blood-type combination.
 
-## Tech Stack 💻
+The system currently supports:
+
+- Eight ABO/Rh blood types
+- Atomic stock additions and subtractions
+- Prevention of negative inventory
+- Automatic stock credit when a donation first transitions to `Completed`
+- UI classifications for normal, low, and critical stock
+
+The system does not currently support:
+
+- Individual blood bag or batch tracking
+- Collection and expiration dates
+- Quarantine or laboratory-release states
+- Component separation
+- Crossmatching
+- Automatic server-side expiry processing
+
+## Architecture
+
+```text
+React/Vite frontend
+        |
+        | HTTPS/JSON
+        v
+Express REST API
+        |
+        | mysql2 connection pool
+        v
+MySQL database
+```
+
+Authentication uses signed JWT bearer tokens. Protected routes reload the current user role and account status from MySQL. Administrative mutations additionally use database-backed granular permissions, while `superadmin` accounts bypass individual permission checks.
+
+## Technology stack
 
 ### Frontend
-- React.js (v18.3.1)
-- TailwindCSS
-- React Query (@tanstack/react-query)
-- React Router
-- Lucide Icons
-- Recharts
-- React Leaflet (Interactive Maps)
-- Google Maps API
-- React Hook Form
-- Yup (Validation)
+
+- React 18
+- Vite 5
+- React Router 6
+- TanStack React Query
+- Axios
+- Tailwind CSS
+- PostCSS and Autoprefixer
 - Headless UI
-- Heroicons
+- Lucide and Heroicons
+- React Leaflet and Leaflet
+- Recharts
+- React Hook Form and Yup
+- jsPDF and jsPDF AutoTable
+- XLSX
+
+Campaign maps use Leaflet with OpenStreetMap tiles. Google Maps is used only through external direction links; no Google Maps API key is required by the current implementation.
 
 ### Backend
+
 - Node.js
-- Express.js
-- MySQL (mysql2)
-- JWT Authentication
-- Bcrypt
-- Nodemailer (Email notifications)
-- OpenAI API (AI features)
-- Express Rate Limiting
-- CORS
+- Express 4
+- MySQL through `mysql2`
+- JSON Web Tokens
+- `bcryptjs`
+- CORS origin allowlisting
+- Express rate limiting
+- Nodemailer dependency
 
-### Additional Libraries
-- jsPDF & jsPDF AutoTable (PDF generation)
-- XLSX (Excel export)
-- Leaflet (Interactive maps)
+`nodemailer` is installed, but outbound email delivery is not currently implemented. Password-reset OTPs are generated in memory and logged by the backend for development.
 
-## Prerequisites 📋
+The `openai` package is installed, but the current chatbot uses local keyword and intent matching and does not call the OpenAI API.
 
-Before running this project, make sure you have:
+## Repository structure
 
-- Node.js (v16 or higher)
-- MySQL (v8.0 or higher)
-- npm or yarn package manager
-- Google Maps API key (for map features)
-- Email service credentials (for notifications)
+```text
+blood-bank-management/
+|-- public/                         Static frontend assets
+|-- src/
+|   |-- api/                        Shared API client re-export
+|   |-- components/
+|   |   |-- auth/                   Route and access guards
+|   |   |-- common/                 Shared application components
+|   |   |-- layout/                 User/admin layouts
+|   |   `-- modules/                Feature-specific components
+|   |-- config/
+|   |   `-- api.js                  API base URL and Axios client
+|   |-- context/                    Authentication context
+|   |-- pages/
+|   |   |-- admin/                  Administrative pages
+|   |   |-- common/                 Shared pages
+|   |   `-- user/                   Donor/public pages
+|   |-- styles/                     Global styles
+|   `-- utils/                      Validation and distance helpers
+|-- backend/
+|   |-- config/
+|   |   `-- database.js             MySQL connection pool
+|   |-- middleware/
+|   |   |-- auth.js                 JWT and active-user validation
+|   |   |-- checkPermission.js      Granular administrator RBAC
+|   |   `-- auditLogger.js          Administrative audit logging
+|   |-- routes/
+|   |   |-- Admin/                  Administrative API routers
+|   |   `-- *.js                    Public and donor API routers
+|   |-- scripts/
+|   |   |-- initDB.js               Fresh database initialization
+|   |   `-- migrations/             Existing-database migrations
+|   |-- server.js                   Express entry point
+|   `-- package.json
+|-- .env.development                Local frontend variables
+|-- .env.production                 Production frontend variables
+|-- vercel.json                     Vercel SPA rewrite
+|-- vite.config.js
+`-- package.json
+```
 
-## Installation 🚀
+## Prerequisites
 
-1. Clone the repository
+- Node.js 18 or later
+- npm
+- MySQL 8 or a compatible managed MySQL service
+
+## Environment configuration
+
+Do not commit real credentials or secrets. Environment files are ignored by Git.
+
+### Frontend development
+
+Create or update `.env.development`:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_APP_NAME=Blood Bank Management System
+```
+
+### Frontend production
+
+Create `.env.production` or configure these variables in Vercel:
+
+```env
+VITE_API_BASE_URL=https://your-api-domain.example/api
+VITE_APP_NAME=Blood Bank Management System
+```
+
+`VITE_API_BASE_URL` must include the `/api` prefix. `VITE_API_URL` is accepted as a compatibility fallback, but `VITE_API_BASE_URL` is preferred. `VITE_APP_NAME` is reserved for application metadata and is not currently consumed by the UI.
+
+### Backend development
+
+Create `backend/.env`:
+
+```env
+NODE_ENV=development
+PORT=5000
+
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_local_password
+DB_NAME=blood_bank_db
+
+JWT_SECRET=replace_with_at_least_32_random_characters
+CORS_ORIGINS=http://localhost:3000
+```
+
+Optional, currently unused integration variable:
+
+```env
+OPENAI_API_KEY=
+```
+
+The server refuses to start if `JWT_SECRET` is missing or shorter than 32 characters.
+
+### Backend production
+
+Configure these variables on the API host:
+
+```env
+NODE_ENV=production
+PORT=5000
+
+DB_HOST=your-managed-mysql-host
+DB_PORT=your-managed-mysql-port
+DB_USER=your-managed-mysql-user
+DB_PASSWORD=your-managed-mysql-password
+DB_NAME=your-database-name
+
+JWT_SECRET=replace_with_a_long_cryptographically_random_secret
+CORS_ORIGINS=https://your-frontend.vercel.app
+```
+
+Multiple frontend origins can be comma-separated:
+
+```env
+CORS_ORIGINS=https://example.com,https://www.example.com
+```
+
+The following variables are required when `NODE_ENV=production`:
+
+- `DB_HOST`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `JWT_SECRET`
+- `CORS_ORIGINS`
+
+`DB_PORT` defaults to `25492`, and `PORT` defaults to `5000`, but both should be explicitly configured in production. The runtime database pool enables TLS when `NODE_ENV=production` or when the database hostname contains `aivencloud`.
+
+## Installation
+
+Clone the repository:
+
 ```bash
 git clone https://github.com/your-username/blood-bank-management.git
 cd blood-bank-management
 ```
 
-2. Install frontend dependencies
+Install frontend and backend dependencies:
+
 ```bash
 npm install
-```
-
-3. Install backend dependencies
-```bash
 cd backend
 npm install
+cd ..
 ```
 
-4. Set up environment variables
-- Create `.env` in the root directory for frontend:
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-```
-- Create `.env` in the backend directory:
-```env
-PORT=5000
-DB_HOST=localhost
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_NAME=blood_bank_db
-JWT_SECRET=your_jwt_secret
-EMAIL_HOST=your_email_host
-EMAIL_PORT=587
-EMAIL_USER=your_email_user
-EMAIL_PASS=your_email_password
-OPENAI_API_KEY=your_openai_api_key
-```
+## Database setup
 
-5. Initialize the database
+### Fresh local database
+
+Ensure MySQL is running and `backend/.env` contains valid local credentials.
+
 ```bash
 cd backend
 npm run init-db
 ```
 
-6. Start the development servers
+This executes `backend/scripts/initDB.js` and creates the configured database and tables.
+
+> `initDB.js` currently uses the default MySQL port and does not configure TLS. It is intended primarily for local initialization. For managed MySQL services, create or select the database through the provider and apply the schema with a properly configured MySQL client.
+
+### Existing database
+
+The security constraint migration is located at `backend/scripts/migrations/001_security_constraints.sql`.
+
+Apply it with a MySQL client after taking a backup:
+
 ```bash
-# In the root directory (frontend)
+mysql \
+  --host=your-host \
+  --port=your-port \
+  --user=your-user \
+  --password \
+  your-database < backend/scripts/migrations/001_security_constraints.sql
+```
+
+The migration intentionally fails if incompatible data exists, including:
+
+- Duplicate profiles for one user
+- Duplicate permission rows for one administrator
+- Duplicate inventory rows for one bank and blood type
+- Null inventory bank IDs
+- Negative inventory values
+
+Resolve those records before rerunning the migration.
+
+### Database tables
+
+- `users`
+- `user_profiles`
+- `blood_banks`
+- `blood_inventory`
+- `admin_permissions`
+- `campaigns`
+- `campaign_sessions`
+- `campaign_reservations`
+- `donations`
+- `messages`
+- `notifications`
+- `audit_logs`
+- `chatbot_conversations`
+
+### Development administrator warning
+
+Review the administrator seeding section in `backend/scripts/initDB.js` before using it. The current seed is development scaffolding and must not be relied upon for production access. Create production administrators through a controlled process using a bcrypt-hashed password, then remove or disable development credentials.
+
+## Running locally
+
+### Start the backend
+
+```bash
+cd backend
 npm run dev
+```
 
-# In the backend directory
+The API defaults to `http://localhost:5000`. For a non-watch process, use `npm run start`.
+
+### Start the frontend
+
+In another terminal, from the repository root:
+
+```bash
 npm run dev
 ```
 
-## Project Structure 📁
+Vite is configured to serve the frontend at `http://localhost:3000`.
 
-```
-blood-bank-management/          
-│   ├── src/                    # React frontend
-│   │   ├── components/         # Reusable UI components
-│   │   │   ├── auth/          # Authentication components
-│   │   │   ├── common/        # Common UI components
-│   │   │   ├── layout/        # Layout components
-│   │   │   └── modules/       # Feature-specific modules
-│   │   ├── pages/             # Page components
-│   │   │   ├── admin/         # Admin dashboard pages
-│   │   │   ├── user/          # User-facing pages
-│   │   │   └── common/        # Shared pages
-│   │   ├── context/           # React context providers
-│   │   ├── api/               # API client configuration
-│   │   ├── utils/             # Utility functions
-│   │   └── styles/            # Global styles
-│   ├── public/                # Static assets
-│   ├── dist/                  # Production build
-│   └── package.json           # Frontend dependencies
-└── backend/                   # Node.js backend
-    ├── config/                # Database configuration
-    ├── routes/                # API routes
-    │   ├── Admin/            # Admin-specific routes
-    │   └── *.js              # General routes
-    ├── middleware/            # Custom middleware
-    │   ├── auth.js           # Authentication
-    │   ├── auditLogger.js    # Audit trail logging
-    │   ├── checkPermission.js # Permission checking
-    │   └── errorHandler.js   # Error handling
-    ├── scripts/               # Database scripts
-    │   └── initDB.js         # Database initialization
-    ├── server.js              # Main server file
-    └── package.json           # Backend dependencies
+## Build and preview
+
+```bash
+npm run build
+npm run preview
 ```
 
-## Screenshots & Demo 📸
+Generated files are written to `dist/`.
 
-### User Interface
-- **Homepage**: Modern landing page with service overview
-- **Blood Availability**: Real-time blood inventory search
-- **Campaign Maps**: Interactive maps showing donation locations
-- **User Dashboard**: Personal donation history and appointments
+## API overview
 
-### Admin Interface
-- **Admin Dashboard**: Comprehensive analytics and statistics
-- **Inventory Management**: Blood stock tracking with expiration alerts
-- **Campaign Management**: Create and manage donation campaigns
-- **Audit Trail**: Complete activity logging and monitoring
-- **Permission Management**: Granular role-based access control
+There is no generated Swagger/OpenAPI page in the current repository. All API routes are mounted under `/api`.
 
-### Key Features
-- 📊 **Interactive Charts**: Real-time data visualization
-- 🗺️ **Interactive Maps**: Location-based services
-- 📱 **Responsive Design**: Mobile-friendly interface
-- 🔐 **Secure Authentication**: JWT-based security
-- 📧 **Email Notifications**: Automated communication
-- 📄 **Export Capabilities**: PDF and Excel reports
+### Authentication
 
-## API Documentation 📚
+```text
+POST /api/auth/register
+POST /api/auth/login
+GET  /api/auth/me
+POST /api/auth/verify-email
+POST /api/auth/send-otp
+POST /api/auth/verify-otp
+POST /api/auth/reset-password
+```
 
-The API documentation is available at:
-- Development: `http://localhost:5000/api-docs`
-- Production: `https://your-api-domain.com/api-docs`
+Authentication routes are rate-limited to 20 requests per 15-minute window per client.
 
-## Contributing 🤝
+### Donor account
 
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/improvement`)
-3. Make your changes
-4. Commit your changes (`git commit -am 'Add new feature'`)
-5. Push to the branch (`git push origin feature/improvement`)
-6. Create a Pull Request
+All `/api/user` routes require a JWT.
 
-## License 📄
+```text
+GET /api/user/profile
+PUT /api/user/profile
+PUT /api/user/change-password
+PUT /api/user/update-blood-type
+GET /api/user/reservation
+GET /api/user/appointments
+PUT /api/user/appointments/:id/cancel
+GET /api/user/donations
+GET /api/user/donation-stats
+PUT /api/user/notification-preferences
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Campaigns
 
-## Support 💬
+```text
+GET  /api/campaigns/upcoming
+POST /api/campaigns/reserve
+GET  /api/campaigns/check-reservation
+GET  /api/campaigns/check-eligibility
+GET  /api/campaigns/:campaignId/check-reservation
+PUT  /api/campaigns/complete-donation/:reservationId
+```
 
-For support, contact us at cyx.yongxian01@gmail.com or open an issue in the GitHub repository.
+Reservation creation and donor-specific checks require authentication. Campaign completion additionally requires `can_manage_appointments`.
 
-## Acknowledgements 🙏
+### Blood banks and availability
 
-- [React](https://reactjs.org/)
-- [Node.js](https://nodejs.org/)
-- [MySQL](https://www.mysql.com/)
-- [Express](https://expressjs.com/)
-- [TailwindCSS](https://tailwindcss.com/)
+```text
+GET /api/blood-banks/all
+GET /api/blood-banks/areas
+GET /api/blood-banks/availability
+GET /api/blood-banks/inventory-summary
+GET /api/blood-banks/:id
+GET /api/blood-banks/:id/availability
+GET /api/blood-banks/:id/inventory
+```
+
+Blood-bank creation, modification, and deletion require `can_manage_blood_banks`. Administrative inventory access and mutation require `can_manage_inventory`.
+
+### Appointments
+
+The active appointment prefix is singular:
+
+```text
+GET /api/appointment
+GET /api/appointment/:id
+GET /api/appointment/time-slots/:campaignId/:date
+PUT /api/appointment/:id/status
+PUT /api/appointment/:id/update-time
+PUT /api/appointment/:id/complete-donation
+```
+
+Administrative reads and mutations require `can_manage_appointments`, except the public time-slot lookup.
+
+### Administrative resources
+
+```text
+/api/admin/dashboard
+/api/admin/users
+/api/admin/inventory/update
+/api/admin/campaigns
+/api/admin/donations
+/api/admin/notifications
+/api/admin/permission
+/api/admin/messages
+/api/admin/audit-logs
+```
+
+Administrative mutations use the relevant database-backed permission:
+
+- `can_manage_users`
+- `can_manage_inventory`
+- `can_manage_campaigns`
+- `can_manage_blood_banks`
+- `can_manage_donations`
+- `can_manage_appointments`
+- `can_manage_notifications`
+- `can_manage_reports`
+
+Superadmins bypass granular permission checks.
+
+### Notifications and messages
+
+```text
+GET /api/notifications
+GET /api/notifications/recent
+PUT /api/notifications/:id/read
+PUT /api/notifications/read-all
+POST /api/messages/submit
+```
+
+### Chatbot
+
+```text
+POST /api/chatbot/chat
+GET  /api/chatbot/suggestions
+GET  /api/chatbot/history
+GET  /api/chatbot/analytics
+```
+
+The chatbot uses local intent recognition. History is stored only for authenticated users.
+
+## Deployment
+
+### Frontend on Vercel
+
+The repository includes `vercel.json`, which rewrites client-side routes to `/index.html` so React Router routes work after direct navigation or refresh.
+
+Configure:
+
+```env
+VITE_API_BASE_URL=https://your-api-domain.example/api
+VITE_APP_NAME=Blood Bank Management System
+```
+
+Recommended Vercel settings:
+
+```text
+Framework preset: Vite
+Build command: npm run build
+Output directory: dist
+```
+
+### Express API on Render
+
+The repository does not include a `render.yaml`, so Render deployment must be configured manually.
+
+```text
+Root directory: backend
+Build command: npm install
+Start command: npm run start
+```
+
+Add all backend production environment variables through Render's environment configuration and include the deployed frontend domain in `CORS_ORIGINS`.
+
+### MySQL on Aiven
+
+Configure the runtime API using the Aiven service credentials:
+
+```env
+DB_HOST=
+DB_PORT=
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+NODE_ENV=production
+```
+
+The current TLS configuration uses `rejectUnauthorized: false`. For stronger production identity verification, download Aiven's CA certificate and configure `mysql2` with it.
+
+Do not assume `npm run init-db` can create an Aiven database. Managed-service accounts may not have `CREATE DATABASE` permission, and the initialization script does not currently pass the configured port or TLS options.
+
+## Security behavior
+
+- Passwords are hashed with bcrypt.
+- JWTs expire after 24 hours.
+- Authentication middleware rejects missing, invalid, expired, or inactive users.
+- Roles and status are reloaded from the database for protected requests.
+- Granular administrator permissions are stored in MySQL.
+- Inventory subtraction uses a conditional atomic update.
+- Completed donations credit inventory only on their first completion transition.
+- Donation completion and inventory credit occur within one transaction.
+- CORS uses an explicit origin allowlist.
+- JSON request bodies are limited to 100 KB.
+- Authentication endpoints are rate-limited.
+
+## Available scripts
+
+### Frontend
+
+```bash
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
+
+### Backend
+
+```bash
+cd backend
+npm run dev
+npm run start
+npm run init-db
+```
+
+## Known limitations
+
+- No Swagger/OpenAPI documentation is generated.
+- No automated test suite is configured.
+- Repository-wide ESLint currently reports existing errors.
+- OTPs are stored in process memory and are lost on restart.
+- OTP delivery is not connected to email and development OTPs are logged by the backend.
+- The chatbot does not currently use OpenAI.
+- Inventory is aggregate and has no expiration model.
+- Low-stock labels are frontend threshold calculations, not server-generated alerts.
+- Database TLS does not currently verify the provider certificate.
+- The production bundle currently emits a large-chunk warning.
+- The repository has no infrastructure-as-code configuration for Render.
+
+## Contributing
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Make and verify your changes.
+4. Run the production build.
+5. Run the available lint checks and document any baseline failures.
+6. Open a pull request with a clear description of the change.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
