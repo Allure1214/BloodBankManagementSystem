@@ -6,6 +6,7 @@ const db = require('../config/database');
 const jwt = require('jsonwebtoken');
 const authMiddleware = require('../middleware/auth');
 const pool = require('../config/database');
+const { sendResetOtpEmail } = require('../utils/mailer');
 
 const validatePassword = (password) => {
     const errors = [];
@@ -28,10 +29,67 @@ const validatePassword = (password) => {
     return errors;
 };
 
-const otpStore = new Map();
-
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+const requestPasswordReset = async (req, res) => {
+  let connection;
+  let userId;
+
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email address is required' });
+    }
+
+    connection = await pool.getConnection();
+    const [users] = await connection.query(
+      'SELECT id, email, status, role FROM users WHERE email = ?',
+      [email]
+    );
+    const user = users[0];
+
+    // Do not disclose whether an eligible account exists.
+    if (!user || user.role !== 'user' || user.status === 'inactive') {
+      return res.status(200).json({
+        success: true,
+        message: 'If this email is registered, an OTP has been sent.'
+      });
+    }
+
+    const otp = generateOTP();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    userId = user.id;
+
+    await connection.query(
+      'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
+      [hashedOtp, expiresAt, userId]
+    );
+    await sendResetOtpEmail(user.email, otp);
+
+    return res.status(200).json({ success: true, message: 'OTP sent to your email successfully.' });
+  } catch (error) {
+    // A token whose email failed to send should not remain usable.
+    if (connection && userId) {
+      try {
+        await connection.query(
+          'UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+          [userId]
+        );
+      } catch (cleanupError) {
+        console.error('Failed to clear undelivered reset OTP:', cleanupError);
+      }
+    }
+    console.error('Forgot password error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP email. Please try again later.'
+    });
+  } finally {
+    if (connection) connection.release();
+  }
 };
 
 // Verify email endpoint
@@ -89,122 +147,57 @@ router.post('/verify-email', async (req, res) => {
   }
 });
 
-// Send OTP endpoint
-router.post('/send-otp', async (req, res) => {
+router.post('/forgot-password', requestPasswordReset);
+// Backward-compatible endpoint used by the existing reset-password page.
+router.post('/send-otp', requestPasswordReset);
+
+// Verify OTP endpoint
+router.post('/verify-otp', async (req, res) => {
   let connection;
   try {
-    const { email } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const otp = req.body.otp == null ? '' : String(req.body.otp);
+    if (!email || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ success: false, message: 'A valid email and 6-digit OTP are required' });
+    }
 
     connection = await pool.getConnection();
-
-    // Verify user exists, is active, and has user role
     const [users] = await connection.query(
-      'SELECT id, status, role FROM users WHERE email = ? AND role = ?',
-      [email, 'user']
+      'SELECT reset_token, reset_token_expires FROM users WHERE email = ?',
+      [email]
     );
-
-    if (users.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: 'Password reset is only available for user accounts, not admin accounts'
-      });
+    const user = users[0];
+    if (!user || !user.reset_token || !user.reset_token_expires) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP request' });
+    }
+    if (Date.now() > new Date(user.reset_token_expires).getTime()) {
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+    }
+    if (!(await bcrypt.compare(otp, user.reset_token))) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP code' });
     }
 
-    if (users[0].status === 'inactive') {
-      return res.status(403).json({
-        success: false,
-        message: 'Account is inactive. Please contact support.'
-      });
-    }
-
-    // Generate and store OTP
-    const otp = generateOTP();
-    otpStore.set(email, {
-      otp,
-      timestamp: Date.now(),
-      attempts: 0
-    });
-
-    // In production, send OTP via email
-    console.log(`OTP for ${email}: ${otp}`);
-
-    res.json({
-      success: true,
-      message: 'OTP sent successfully'
-    });
-
+    return res.json({ success: true, message: 'OTP verified successfully' });
   } catch (error) {
-    console.error('Error sending OTP:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to send OTP'
-    });
+    console.error('OTP verification error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
   } finally {
     if (connection) connection.release();
   }
-});
-
-// Verify OTP endpoint
-router.post('/verify-otp', (req, res) => {
-  const { email, otp } = req.body;
-
-  const storedData = otpStore.get(email);
-  
-  if (!storedData) {
-    return res.status(400).json({
-      success: false,
-      message: 'OTP expired or not found. Please request a new one.'
-    });
-  }
-
-  // Check if OTP is expired (15 minutes)
-  if (Date.now() - storedData.timestamp > 15 * 60 * 1000) {
-    otpStore.delete(email);
-    return res.status(400).json({
-      success: false,
-      message: 'OTP has expired. Please request a new one.'
-    });
-  }
-
-  // Check maximum attempts (3)
-  if (storedData.attempts >= 3) {
-    otpStore.delete(email);
-    return res.status(400).json({
-      success: false,
-      message: 'Too many failed attempts. Please request a new OTP.'
-    });
-  }
-
-  // Verify OTP
-  if (storedData.otp !== otp) {
-    storedData.attempts++;
-    otpStore.set(email, storedData);
-    
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid OTP'
-    });
-  }
-
-  // OTP verified successfully
-  res.json({
-    success: true,
-    message: 'OTP verified successfully'
-  });
 });
 
 // Reset password endpoint
 router.post('/reset-password', async (req, res) => {
   let connection;
   try {
-    const { email, newPassword, otp } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const otp = req.body.otp == null ? '' : String(req.body.otp);
+    const { newPassword } = req.body;
 
-    // Verify OTP again as final security check
-    const storedData = otpStore.get(email);
-    if (!storedData || storedData.otp !== otp) {
+    if (!email || !/^\d{6}$/.test(otp) || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired reset token. Please restart the password reset process.'
+        message: 'Email, OTP, and new password are required'
       });
     }
 
@@ -239,17 +232,29 @@ router.post('/reset-password', async (req, res) => {
 
     connection = await pool.getConnection();
 
+    const [users] = await connection.query(
+      'SELECT id, reset_token, reset_token_expires FROM users WHERE email = ?',
+      [email]
+    );
+    const user = users[0];
+    if (!user || !user.reset_token || !user.reset_token_expires) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP request' });
+    }
+    if (Date.now() > new Date(user.reset_token_expires).getTime()) {
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+    }
+    if (!(await bcrypt.compare(otp, user.reset_token))) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP code' });
+    }
+
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update password in database
+    // Consume the OTP when the password changes.
     await connection.query(
-      'UPDATE users SET password = ? WHERE email = ?',
-      [hashedPassword, email]
+      'UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+      [hashedPassword, user.id]
     );
-
-    // Clear OTP after successful password reset
-    otpStore.delete(email);
 
     res.json({
       success: true,
@@ -542,7 +547,7 @@ router.post('/login', async (req, res) => {
         role: user.role 
       },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '168h' }
     );
 
     // Remove sensitive data
