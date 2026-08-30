@@ -1,28 +1,26 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const createTransporter = () => {
-  const EMAIL_USER = process.env.EMAIL_USER?.trim();
-  // Gmail displays app passwords in groups; SMTP expects the 16 characters without spaces.
-  const EMAIL_PASS = process.env.EMAIL_PASS?.replace(/\s/g, '');
-  if (!EMAIL_USER || !EMAIL_PASS) {
-    const missing = [!EMAIL_USER && 'EMAIL_USER', !EMAIL_PASS && 'EMAIL_PASS'].filter(Boolean);
-    const error = new Error(`Missing SMTP environment variable(s): ${missing.join(', ')}`);
-    error.code = 'SMTP_CONFIG_MISSING';
+const getResendClient = () => {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    const error = new Error('Missing RESEND_API_KEY environment variable');
+    error.code = 'EMAIL_CONFIG_MISSING';
     throw error;
   }
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: EMAIL_USER, pass: EMAIL_PASS }
-  });
+  return new Resend(apiKey);
 };
 
-/** Send a password reset OTP email. */
+/**
+ * Send password reset OTP email via Resend HTTPS API (port 443).
+ * @param {string} toEmail - Recipient email address
+ * @param {string} otp - 6-digit OTP code
+ */
 const sendResetOtpEmail = async (toEmail, otp) => {
-  const emailUser = process.env.EMAIL_USER?.trim();
-  const info = await createTransporter().sendMail({
-    from: `"LifeLink Blood Bank" <${emailUser}>`,
-    to: toEmail,
+  const resend = getResendClient();
+
+  const { data, error } = await resend.emails.send({
+    from: 'LifeLink Blood Bank <onboarding@resend.dev>',
+    to: [toEmail],
     subject: 'LifeLink - Password Reset Verification Code',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
@@ -39,7 +37,13 @@ const sendResetOtpEmail = async (toEmail, otp) => {
     `
   });
 
-  return info;
+  if (error) {
+    const resendError = new Error(`Resend API failed: ${error.message}`);
+    resendError.code = error.name || 'RESEND_API_ERROR';
+    throw resendError;
+  }
+
+  return data;
 };
 
 module.exports = { sendResetOtpEmail };
