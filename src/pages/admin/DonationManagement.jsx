@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Calendar, Droplet, MapPin, User, Mail, Phone, Edit, Plus, X, Filter, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Clock, Check, XCircle } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -141,7 +142,7 @@ const DonationManagement = () => {
     const fetchDonations = async () => {
         try {
         const token = sessionStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/admin/donations', {
+        const response = await fetch(`${API_BASE_URL}/admin/donations`, {
             headers: {
             'Authorization': `Bearer ${token}`
             }
@@ -213,7 +214,7 @@ const DonationManagement = () => {
             const fetchDonors = async () => {
                 try {
                     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-                    const response = await fetch('http://localhost:5000/api/admin/donations/users/donors', {
+                    const response = await fetch(`${API_BASE_URL}/admin/donations/users/donors`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
@@ -249,7 +250,7 @@ const DonationManagement = () => {
             const fetchBloodBanks = async () => {
                 try {
                     const token = sessionStorage.getItem('token');
-                    const response = await fetch('http://localhost:5000/api/blood-banks/all', {
+                    const response = await fetch(`${API_BASE_URL}/blood-banks/all`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
@@ -324,7 +325,7 @@ const DonationManagement = () => {
                     const token = sessionStorage.getItem('token');
                     
                     // First add the donation
-                    const donationResponse = await fetch('http://localhost:5000/api/admin/donations', {
+                    const donationResponse = await fetch(`${API_BASE_URL}/admin/donations`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`,
@@ -675,7 +676,7 @@ const DonationManagement = () => {
         setIsSubmitting(true);
         try {
             const token = sessionStorage.getItem('token');
-            const response = await fetch(`http://localhost:5000/api/admin/donations/${donation.id}`, {
+            const response = await fetch(`${API_BASE_URL}/admin/donations/${donation.id}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,

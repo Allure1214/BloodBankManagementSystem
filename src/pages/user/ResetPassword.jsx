@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -58,7 +59,7 @@ const ResetPassword = () => {
         throw new Error('Please enter your email address');
       }
       if (step === 1) {
-        const verifyResponse = await fetch('http://localhost:5000/api/auth/verify-email', {
+        const verifyResponse = await fetch(`${API_BASE_URL}/auth/verify-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: emailTrimmed })
@@ -69,7 +70,7 @@ const ResetPassword = () => {
           throw new Error(errorData.message || 'Email verification failed');
         }
 
-        const otpResponse = await fetch('http://localhost:5000/api/auth/send-otp', {
+        const otpResponse = await fetch(`${API_BASE_URL}/auth/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: emailTrimmed })
@@ -83,7 +84,7 @@ const ResetPassword = () => {
         setStep(2);
         setCountdown(60);
       } else if (step === 2) {
-        const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
+        const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: emailTrimmed, otp })
@@ -99,7 +100,7 @@ const ResetPassword = () => {
           throw new Error("Passwords don't match");
         }
 
-        const response = await fetch('http://localhost:5000/api/auth/reset-password', {
+        const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -318,7 +319,7 @@ const ResetPassword = () => {
                   onClick={async () => {
                     if (countdown === 0) {
                       try {
-                        const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+                        const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ email: formData.email })

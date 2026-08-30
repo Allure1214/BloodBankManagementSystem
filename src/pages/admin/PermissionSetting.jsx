@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
@@ -114,7 +115,7 @@ const SettingsPage = () => {
 
   const fetchAdmins = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/admin/permission/normal-admins', {
+      const response = await fetch(`${API_BASE_URL}/admin/permission/normal-admins`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
@@ -178,7 +179,7 @@ const SettingsPage = () => {
   const handlePermissionChange = async (adminId, permission, newValue) => {
     setSavingId(adminId);
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/permission/${adminId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/permission/${adminId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -244,7 +245,7 @@ const SettingsPage = () => {
     setIsSubmitting(true);
     try {
       const promises = selectedAdmins.map(adminId => 
-        fetch(`http://localhost:5000/api/admin/permission/${adminId}`, {
+        fetch(`${API_BASE_URL}/admin/permission/${adminId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

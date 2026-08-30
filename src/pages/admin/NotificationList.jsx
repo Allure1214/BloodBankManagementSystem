@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { Filter, Search, X, Eye, Download, CheckCircle, AlertCircle, Info, Bell, Users, Calendar, RefreshCw } from 'lucide-react';
 
@@ -134,7 +135,7 @@ const NotificationList = () => {
 
         const fetchNotifications = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/admin/notifications/all', {
+            const response = await fetch(`${API_BASE_URL}/admin/notifications/all`, {
             headers: {
                 'Authorization': `Bearer ${sessionStorage.getItem('token')}`
             }

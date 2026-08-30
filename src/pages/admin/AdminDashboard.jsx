@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -267,7 +268,7 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/dashboard?timeframe=${timeframe}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/dashboard?timeframe=${timeframe}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -290,7 +291,7 @@ const AdminDashboard = () => {
   const handleAppointmentAction = async (appointmentId, action) => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/appointments/${appointmentId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/admin/appointments/${appointmentId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

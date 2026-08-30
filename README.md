@@ -117,7 +117,7 @@ npm install
 4. Set up environment variables
 - Create `.env` in the root directory for frontend:
 ```env
-VITE_API_URL=http://localhost:5000
+VITE_API_BASE_URL=http://localhost:5000/api
 VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 - Create `.env` in the backend directory:

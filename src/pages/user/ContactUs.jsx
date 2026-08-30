@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useMemo } from 'react';
 import { 
   MapPin, Phone, Mail, Clock, Send, 
@@ -128,8 +129,7 @@ const ContactUs = () => {
     setError('');
 
     try {
-      const baseUrl = import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:5000';
-      const response = await fetch(`${baseUrl}/api/messages/submit`, {
+      const response = await fetch(`${API_BASE_URL}/messages/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

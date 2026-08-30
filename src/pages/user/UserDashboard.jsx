@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
@@ -78,7 +79,7 @@ const UserDashboard = () => {
   const markNotificationAsRead = async (notificationId) => {
     try {
       const token = getAuthToken();
-      const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}/read`, {
+      const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -102,7 +103,7 @@ const UserDashboard = () => {
   const markAllNotificationsAsRead = async () => {
     try {
       const token = getAuthToken();
-      const response = await fetch('http://localhost:5000/api/notifications/read-all', {
+      const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -141,7 +142,7 @@ const UserDashboard = () => {
   const fetchNotifications = async () => {
     try {
       const token = getAuthToken();
-      const response = await fetch('http://localhost:5000/api/notifications', {
+      const response = await fetch(`${API_BASE_URL}/notifications`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -167,10 +168,10 @@ const UserDashboard = () => {
   
       // Add campaign reservations fetch
       const [profileResponse, donationsResponse, notificationsResponse, reservationsResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/user/profile', { headers }),
-        fetch('http://localhost:5000/api/user/donations', { headers }),
-        fetch('http://localhost:5000/api/notifications', { headers }),
-        fetch('http://localhost:5000/api/user/reservation', { headers })
+        fetch(`${API_BASE_URL}/user/profile`, { headers }),
+        fetch(`${API_BASE_URL}/user/donations`, { headers }),
+        fetch(`${API_BASE_URL}/notifications`, { headers }),
+        fetch(`${API_BASE_URL}/user/reservation`, { headers })
       ]);
   
       // Process all responses

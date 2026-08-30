@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { Search, Check, X, Eye, Calendar, MapPin, Clock, CalendarHeart, Filter, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Plus, Edit, Trash2 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -24,7 +25,7 @@ const AppointmentManagement = () => {
   const fetchAppointments = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/appointment', {
+      const response = await fetch(`${API_BASE_URL}/appointment`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -49,7 +50,7 @@ const AppointmentManagement = () => {
       const token = sessionStorage.getItem('token');
       console.log('Sending request with data:', { appointmentId, newStatus });
   
-      const response = await fetch(`http://localhost:5000/api/appointment/${appointmentId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/appointment/${appointmentId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -98,7 +99,7 @@ const AppointmentManagement = () => {
       const nextEligibleDate = new Date();
       nextEligibleDate.setMonth(nextEligibleDate.getMonth() + 3);
   
-      const response = await fetch(`http://localhost:5000/api/appointment/${appointmentId}/complete-donation`, {
+      const response = await fetch(`${API_BASE_URL}/appointment/${appointmentId}/complete-donation`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

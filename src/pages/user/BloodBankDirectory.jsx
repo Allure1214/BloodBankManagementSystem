@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { 
   MapPin, 
@@ -45,7 +46,7 @@ const BloodBankDirectory = () => {
 
   const fetchBloodBanks = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/blood-banks/all');
+      const response = await fetch(`${API_BASE_URL}/blood-banks/all`);
       const data = await response.json();
       if (data.success) {
         setBloodBanks(data.data);
@@ -61,7 +62,7 @@ const BloodBankDirectory = () => {
 
   const fetchAreas = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/blood-banks/areas');
+      const response = await fetch(`${API_BASE_URL}/blood-banks/areas`);
       const data = await response.json();
       if (data.success) {
         setAreas(data.data);

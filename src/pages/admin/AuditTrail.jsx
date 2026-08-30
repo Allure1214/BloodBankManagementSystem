@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Calendar, User, Activity, Eye, ChevronDown, ChevronUp, X, Clock, AlertCircle, CheckCircle, Edit, Trash, UserPlus, UserX, Bell, Building2 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -48,7 +49,7 @@ const AuditTrail = () => {
         params.append('search', searchTerm);
       }
 
-      const response = await fetch(`http://localhost:5000/api/admin/audit-logs?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/audit-logs?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -72,7 +73,7 @@ const AuditTrail = () => {
   const fetchFilterOptions = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/audit-logs/filters/options', {
+      const response = await fetch(`${API_BASE_URL}/admin/audit-logs/filters/options`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -90,7 +91,7 @@ const AuditTrail = () => {
   const fetchStats = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/audit-logs/stats/summary', {
+      const response = await fetch(`${API_BASE_URL}/admin/audit-logs/stats/summary`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

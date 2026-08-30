@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line,
@@ -61,7 +62,7 @@ const BloodDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/dashboard/stats');
+      const response = await fetch(`${API_BASE_URL}/dashboard/stats`);
       const data = await response.json();
       if (data.success) {
         // Transform monthly data to include all months

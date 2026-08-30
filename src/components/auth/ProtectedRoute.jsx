@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useState, useEffect } from 'react';
@@ -50,7 +51,7 @@ export const AdminRoute = ({ children, requiredPermission }) => {
 
         // Check specific permission for regular admin
         if (requiredPermission) {
-          const response = await fetch('http://localhost:5000/api/admin/users/permissions', {
+          const response = await fetch(`${API_BASE_URL}/admin/users/permissions`, {
             headers: {
               'Authorization': `Bearer ${sessionStorage.getItem('token')}`
             }

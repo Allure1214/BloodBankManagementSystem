@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { PlusCircle, X, RefreshCw, ChevronDown, AlertTriangle, Droplet, Search, Scale, Calendar, Filter, TrendingUp, TrendingDown, CheckCircle, AlertCircle, Info, Eye, EyeOff, Zap, Shield, Clock } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -224,7 +225,7 @@ const BloodInventoryManagement = () => {
   const fetchBloodBanks = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/blood-banks/all', {
+      const response = await fetch(`${API_BASE_URL}/blood-banks/all`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -246,7 +247,7 @@ const BloodInventoryManagement = () => {
       setLoading(true);
       setError(null);
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/blood-banks/${bankId}/inventory`, {
+      const response = await fetch(`${API_BASE_URL}/blood-banks/${bankId}/inventory`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -266,7 +267,7 @@ const BloodInventoryManagement = () => {
     try {
       setActionLoading(true);
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/inventory/update', {
+      const response = await fetch(`${API_BASE_URL}/admin/inventory/update`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

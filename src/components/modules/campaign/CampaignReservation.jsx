@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -110,7 +111,7 @@ const CampaignReservationModal = ({ campaign, isOpen, onClose, onSubmit }) => {
     const checkUserStatus = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/campaigns/check-eligibility`,
+          `${API_BASE_URL}/campaigns/check-eligibility`,
           {
             headers: {
               'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
@@ -215,7 +216,7 @@ const CampaignReservationModal = ({ campaign, isOpen, onClose, onSubmit }) => {
   setError('');
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/campaigns/reserve`, {
+    const response = await fetch(`${API_BASE_URL}/campaigns/reserve`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -253,7 +254,7 @@ const CampaignReservationModal = ({ campaign, isOpen, onClose, onSubmit }) => {
     if (user) {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/campaigns/check-reservation`,
+          `${API_BASE_URL}/campaigns/check-reservation`,
           {
             headers: {
               'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`

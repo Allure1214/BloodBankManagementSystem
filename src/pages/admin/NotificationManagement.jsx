@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { Bell, Send, Filter, X, AlertCircle, CheckCircle, Info, Eye, RefreshCw, Plus, Edit, Trash2 } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -36,7 +37,7 @@ import NotificationList from './NotificationList';
     const checkRecipients = async () => {
         setIsCheckingRecipients(true);
         try {
-            const response = await fetch('http://localhost:5000/api/admin/notifications/check-recipients', {
+            const response = await fetch(`${API_BASE_URL}/admin/notifications/check-recipients`, {
                 method: 'POST',
                 headers: {
                 'Content-Type': 'application/json',
@@ -59,7 +60,7 @@ import NotificationList from './NotificationList';
     const fetchRecipientDetails = async () => {
         setLoadingRecipients(true);
         try {
-            const response = await fetch('http://localhost:5000/api/admin/notifications/recipient-details', {
+            const response = await fetch(`${API_BASE_URL}/admin/notifications/recipient-details`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -383,7 +384,7 @@ import NotificationList from './NotificationList';
         setErrorMessage('');
         
         try {
-            const response = await fetch('http://localhost:5000/api/admin/notifications/send', {
+            const response = await fetch(`${API_BASE_URL}/admin/notifications/send`, {
                 method: 'POST',
                 headers: {
                 'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +22,7 @@ const DashboardLayout = ({ children }) => {
   const fetchNotifications = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/notifications/recent', {
+      const response = await fetch(`${API_BASE_URL}/notifications/recent`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -49,7 +50,7 @@ const DashboardLayout = ({ children }) => {
   const markNotificationAsRead = async (notificationId) => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}/read`, {
+      const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -68,7 +69,7 @@ const DashboardLayout = ({ children }) => {
   const markAllNotificationsAsRead = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/notifications/read-all', {
+      const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

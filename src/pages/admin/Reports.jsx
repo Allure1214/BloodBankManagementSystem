@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -268,28 +269,28 @@ const Reports = () => {
       const token = sessionStorage.getItem('token');
       
       // Fetch dashboard stats (real data)
-      const dashboardResponse = await fetch(`http://localhost:5000/api/admin/dashboard?timeframe=${timeframe}`, {
+      const dashboardResponse = await fetch(`${API_BASE_URL}/admin/dashboard?timeframe=${timeframe}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
       // Fetch campaign data for real campaign performance
-      const campaignResponse = await fetch('http://localhost:5000/api/admin/campaigns', {
+      const campaignResponse = await fetch(`${API_BASE_URL}/admin/campaigns`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
       // Fetch campaign reservations for detailed analytics
-      const reservationsResponse = await fetch('http://localhost:5000/api/admin/campaigns/reservations', {
+      const reservationsResponse = await fetch(`${API_BASE_URL}/admin/campaigns/reservations`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
       // Fetch user profiles for demographics
-      const userProfilesResponse = await fetch('http://localhost:5000/api/admin/users/profiles', {
+      const userProfilesResponse = await fetch(`${API_BASE_URL}/admin/users/profiles`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

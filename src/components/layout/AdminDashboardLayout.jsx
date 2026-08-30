@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -149,7 +150,7 @@ const AdminDashboardLayout = ({ children }) => {
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/admin/users/permissions', {
+        const response = await fetch(`${API_BASE_URL}/admin/users/permissions`, {
           headers: {
             'Authorization': `Bearer ${sessionStorage.getItem('token')}`
           }

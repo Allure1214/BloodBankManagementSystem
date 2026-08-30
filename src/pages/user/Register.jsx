@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useMemo, useState } from 'react';
 import { 
   Mail, User, Phone, Lock, Eye, EyeOff, HelpCircle,
@@ -115,8 +116,7 @@ const Register = () => {
     try {
       setError('');
       setLoading(true);
-      const baseUrl = import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:5000';
-      const response = await fetch(`${baseUrl}/api/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

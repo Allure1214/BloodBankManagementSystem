@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { MapPin, Clock, Building, Navigation, Calendar, Users, ChevronRight, AlertCircle } from 'lucide-react';
@@ -190,7 +191,7 @@ const CampaignMap = () => {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/campaigns/upcoming');
+      const response = await fetch(`${API_BASE_URL}/campaigns/upcoming`);
       const data = await response.json();
       if (data.success) {
         setCampaigns(data.data.filter(c => c.latitude && c.longitude));

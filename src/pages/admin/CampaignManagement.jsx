@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, MapPin, Plus, Edit, Trash, Clock, Search, Eye, X, Filter, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Navigation, Map } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -116,7 +117,7 @@ const CampaignManagement = () => {
     const fetchCampaigns = async () => {
         try {
         const token = sessionStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/admin/campaigns', {
+        const response = await fetch(`${API_BASE_URL}/admin/campaigns`, {
             headers: {
             'Authorization': `Bearer ${token}`
             }
@@ -413,8 +414,8 @@ const CampaignManagement = () => {
         try {
             const token = sessionStorage.getItem('token');
             const url = modalMode === 'add' 
-            ? 'http://localhost:5000/api/admin/campaigns'
-            : `http://localhost:5000/api/admin/campaigns/${selectedCampaign.id}`;
+            ? `${API_BASE_URL}/admin/campaigns`
+            : `${API_BASE_URL}/admin/campaigns/${selectedCampaign.id}`;
             
             const response = await fetch(url, {
             method: modalMode === 'add' ? 'POST' : 'PUT',
@@ -874,7 +875,7 @@ const CampaignManagement = () => {
     const handleDelete = async (campaignId) => {
         try {
             const token = sessionStorage.getItem('token');
-            const response = await fetch(`http://localhost:5000/api/admin/campaigns/${campaignId}`, {
+            const response = await fetch(`${API_BASE_URL}/admin/campaigns/${campaignId}`, {
                 method: 'DELETE',
                 headers: {
                 'Authorization': `Bearer ${token}`

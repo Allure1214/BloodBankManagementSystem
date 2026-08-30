@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { Clock, X, Loader2, Calendar, MapPin, Info, AlertCircle } from 'lucide-react';
 
@@ -20,7 +21,7 @@ const AppointmentTimeEdit = ({ appointment, onUpdate, onClose }) => {
       const formattedDate = date.toLocaleDateString('en-CA');
   
       const response = await fetch(
-        `http://localhost:5000/api/appointment/time-slots/${appointment.campaign_id}/${formattedDate}`,
+        `${API_BASE_URL}/appointment/time-slots/${appointment.campaign_id}/${formattedDate}`,
         {
           headers: {
             'Authorization': `Bearer ${sessionStorage.getItem('token')}`
@@ -51,7 +52,7 @@ const AppointmentTimeEdit = ({ appointment, onUpdate, onClose }) => {
       setLoading(true);
       setError('');
 
-      const response = await fetch(`http://localhost:5000/api/appointment/${appointment.id}/update-time`, {
+      const response = await fetch(`${API_BASE_URL}/appointment/${appointment.id}/update-time`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

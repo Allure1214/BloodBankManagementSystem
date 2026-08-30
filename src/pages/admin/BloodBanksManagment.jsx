@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash, Search, MapPin, Phone, Clock, Building2, X, AlertCircle, CheckCircle, Filter, Users, Globe, AlertTriangle, Info, Map, Star, Shield, Zap } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -191,7 +192,7 @@ const DeleteConfirmationModal = ({ bank, onConfirm, onCancel, isDeleting }) => (
     const fetchBloodBanks = async () => {
         try {
         const token = sessionStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/blood-banks/all', {
+        const response = await fetch(`${API_BASE_URL}/blood-banks/all`, {
             headers: {
             'Authorization': `Bearer ${token}`
             }
@@ -262,8 +263,8 @@ const DeleteConfirmationModal = ({ bank, onConfirm, onCancel, isDeleting }) => (
         try {
             const token = sessionStorage.getItem('token');
             const url = modalMode === 'add' 
-            ? 'http://localhost:5000/api/blood-banks'
-            : `http://localhost:5000/api/blood-banks/${selectedBank.id}`;
+            ? `${API_BASE_URL}/blood-banks`
+            : `${API_BASE_URL}/blood-banks/${selectedBank.id}`;
             
             const response = await fetch(url, {
             method: modalMode === 'add' ? 'POST' : 'PUT',
@@ -497,7 +498,7 @@ const DeleteConfirmationModal = ({ bank, onConfirm, onCancel, isDeleting }) => (
         try {
             setActionLoading(bankId);
             const token = sessionStorage.getItem('token');
-            const response = await fetch(`http://localhost:5000/api/blood-banks/${bankId}`, {
+            const response = await fetch(`${API_BASE_URL}/blood-banks/${bankId}`, {
                 method: 'DELETE',
                 headers: {
                 'Authorization': `Bearer ${token}`

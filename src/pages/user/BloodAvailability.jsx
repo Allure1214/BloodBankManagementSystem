@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
@@ -29,7 +30,7 @@ const BloodSearch = () => {
 
   const fetchAreas = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/blood-banks/areas');
+      const response = await fetch(`${API_BASE_URL}/blood-banks/areas`);
       const data = await response.json();
       
       if (data.success) {
@@ -50,7 +51,7 @@ const BloodSearch = () => {
     
     try {
       const response = await fetch(
-        `http://localhost:5000/api/blood-banks/availability?area=${encodeURIComponent(selectedArea)}${
+        `${API_BASE_URL}/blood-banks/availability?area=${encodeURIComponent(selectedArea)}${
           selectedBloodType ? `&bloodType=${encodeURIComponent(selectedBloodType)}` : ''
         }`
       );

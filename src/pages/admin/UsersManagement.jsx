@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../config/api.js';
 import React, { useState, useEffect } from 'react';
 import { Search, Edit, Trash, UserCheck, UserX, ChevronDown, ChevronUp, Filter, UserPlus, X, Check, Users, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import AdminLayout from '../../components/layout/AdminDashboardLayout';
@@ -268,7 +269,7 @@ const [actionLoading, setActionLoading] = useState(null);
       setIsSubmitting(true);
       try {
         const token = sessionStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/admin/users', {
+        const response = await fetch(`${API_BASE_URL}/admin/users`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -471,7 +472,7 @@ const [actionLoading, setActionLoading] = useState(null);
   const fetchUsers = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/users', {
+      const response = await fetch(`${API_BASE_URL}/admin/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -532,7 +533,7 @@ const [actionLoading, setActionLoading] = useState(null);
     setActionLoading(userId);
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/users/${userId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -591,7 +592,7 @@ const [actionLoading, setActionLoading] = useState(null);
       setIsSubmitting(true);
       try {
         const token = sessionStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/admin/users/${user.id}`, {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${user.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
