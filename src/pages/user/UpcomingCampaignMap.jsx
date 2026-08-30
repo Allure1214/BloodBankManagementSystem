@@ -1,9 +1,8 @@
 import { API_BASE_URL } from '../../config/api.js';
-import React, { useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import { MapPin, Clock, Building, Navigation, Calendar, Users, ChevronRight, AlertCircle } from 'lucide-react';
+import { MapPin, Building, Navigation, Calendar, Users, ChevronRight, AlertCircle } from 'lucide-react';
 import L from 'leaflet';
-import { useAuth } from '../../context/AuthContext';
 import CampaignReservationModal from '../../components/modules/campaign/CampaignReservation';
 import 'leaflet/dist/leaflet.css';
 import { calculateDistance } from '../../utils/distance';
@@ -22,40 +21,52 @@ const userIcon = createCustomIcon('red');
 const campaignIcon = createCustomIcon('blue');
 const highlightedIcon = createCustomIcon('gold');
 
-const SAME_LOCATION_TOLERANCE = 0.0001;
+const DEFAULT_MAP_CENTER = [3.1390, 101.6869];
+const SAME_LOCATION_TOLERANCE = 0.00001;
 
-function MapFocus({ latitude, longitude }) {
+const MapRecenter = memo(function MapRecenter({ latitude, longitude, zoom = 15 }) {
   const map = useMap();
+  const previousTargetRef = useRef(null);
 
   useEffect(() => {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
+    const previousTarget = previousTargetRef.current;
+    const targetHasNotChanged =
+      previousTarget &&
+      Math.abs(previousTarget.latitude - latitude) < SAME_LOCATION_TOLERANCE &&
+      Math.abs(previousTarget.longitude - longitude) < SAME_LOCATION_TOLERANCE;
+
+    if (targetHasNotChanged) return;
+
+    previousTargetRef.current = { latitude, longitude };
+
     const currentCenter = map.getCenter();
     const isAlreadyAtTarget =
       Math.abs(currentCenter.lat - latitude) < SAME_LOCATION_TOLERANCE &&
-      Math.abs(currentCenter.lng - longitude) < SAME_LOCATION_TOLERANCE;
+      Math.abs(currentCenter.lng - longitude) < SAME_LOCATION_TOLERANCE &&
+      map.getZoom() === zoom;
 
     if (isAlreadyAtTarget) return;
 
     map.stop();
-    map.flyTo([latitude, longitude], 15, {
+    map.flyTo([latitude, longitude], zoom, {
       animate: true,
-      duration: 1.5,
+      duration: 1.2,
       easeLinearity: 0.25,
+      noMoveStart: true,
     });
 
     return () => map.stop();
-  }, [latitude, longitude, map]);
+  }, [latitude, longitude, zoom, map]);
 
   return null;
-}
+});
 
 const CampaignMap = () => {
-  const { user } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [mapCenter, setMapCenter] = useState([3.1390, 101.6869]);
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -142,7 +153,6 @@ const CampaignMap = () => {
     const onSuccess = (position) => {
       const { latitude, longitude } = position.coords;
       setUserLocation([latitude, longitude]);
-      setMapCenter([latitude, longitude]);
       setError('');
       lastErrorCodeRef.current = null;
     };
@@ -361,13 +371,16 @@ const CampaignMap = () => {
 
           <div ref={mapAreaRef} style={{ height: panelHeight }}>
             <MapContainer
-              center={mapCenter}
+              center={DEFAULT_MAP_CENTER}
               zoom={11}
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; OpenStreetMap contributors'
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                keepBuffer={8}
+                updateWhenZooming={false}
+                updateWhenIdle={true}
               />
               {userLocation && (
                 <Marker position={userLocation} icon={userIcon}>
@@ -410,7 +423,7 @@ const CampaignMap = () => {
                   </Popup>
                 </Marker>
               ))}
-              <MapFocus
+              <MapRecenter
                 latitude={selectedCampaign ? Number(selectedCampaign.latitude) : userLocation?.[0]}
                 longitude={selectedCampaign ? Number(selectedCampaign.longitude) : userLocation?.[1]}
               />
