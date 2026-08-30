@@ -36,6 +36,7 @@ const generateOTP = () => {
 const requestPasswordReset = async (req, res) => {
   let connection;
   let userId;
+  let stage = 'validation';
 
   try {
     const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
@@ -43,7 +44,9 @@ const requestPasswordReset = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email address is required' });
     }
 
+    stage = 'database-connection';
     connection = await pool.getConnection();
+    stage = 'user-query';
     const [users] = await connection.query(
       'SELECT id, email, status, role FROM users WHERE email = ?',
       [email]
@@ -63,10 +66,12 @@ const requestPasswordReset = async (req, res) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     userId = user.id;
 
+    stage = 'token-update';
     await connection.query(
       'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
       [hashedOtp, expiresAt, userId]
     );
+    stage = 'smtp-send';
     await sendResetOtpEmail(user.email, otp);
 
     return res.status(200).json({ success: true, message: 'OTP sent to your email successfully.' });
@@ -82,7 +87,13 @@ const requestPasswordReset = async (req, res) => {
         console.error('Failed to clear undelivered reset OTP:', cleanupError);
       }
     }
-    console.error('Forgot password error:', error);
+    console.error('Error in POST /api/auth/send-otp', {
+      stage,
+      message: error.message,
+      code: error.code,
+      sqlState: error.sqlState,
+      stack: error.stack
+    });
     return res.status(500).json({
       success: false,
       message: 'Failed to send OTP email. Please try again later.'

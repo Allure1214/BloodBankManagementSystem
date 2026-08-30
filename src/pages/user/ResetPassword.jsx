@@ -1,5 +1,5 @@
-import { API_BASE_URL } from '../../config/api.js';
-import React, { useState, useEffect } from 'react';
+import api from '../../api/client.js';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   Mail,
@@ -10,11 +10,30 @@ import {
   CheckCircle,
   Lock,
   KeyRound,
-  Info,
   Shield,
   AlertCircle,
   ArrowLeft
 } from 'lucide-react';
+
+const getApiErrorMessage = (error, fallback) => {
+  if (!error.response) {
+    return 'Unable to reach the server. Check your connection and try again.';
+  }
+
+  const serverMessage = error.response.data?.message || error.response.data?.error;
+  if (serverMessage) return serverMessage;
+
+  switch (error.response.status) {
+    case 400:
+      return 'The OTP is invalid or expired. Please request a new one.';
+    case 404:
+      return 'No account was found for that email address.';
+    case 500:
+      return 'The server could not send the email. Please try again later.';
+    default:
+      return fallback;
+  }
+};
 
 const ResetPassword = () => {
   const { user } = useAuth();
@@ -59,40 +78,17 @@ const ResetPassword = () => {
         throw new Error('Please enter your email address');
       }
       if (step === 1) {
-        const verifyResponse = await fetch(`${API_BASE_URL}/auth/verify-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailTrimmed })
-        });
-
-        if (!verifyResponse.ok) {
-          const errorData = await verifyResponse.json();
-          throw new Error(errorData.message || 'Email verification failed');
-        }
-
-        const otpResponse = await fetch(`${API_BASE_URL}/auth/send-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailTrimmed })
-        });
-
-        if (!otpResponse.ok) {
-          const errorData = await otpResponse.json();
-          throw new Error(errorData.message || 'Failed to send OTP');
+        const otpResponse = await api.post('/auth/send-otp', { email: emailTrimmed });
+        if (otpResponse.status !== 200 || otpResponse.data?.success === false) {
+          throw new Error(otpResponse.data?.message || 'Failed to send OTP');
         }
 
         setStep(2);
         setCountdown(60);
       } else if (step === 2) {
-        const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailTrimmed, otp })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Invalid OTP');
+        const response = await api.post('/auth/verify-otp', { email: emailTrimmed, otp });
+        if (response.status !== 200 || response.data?.success === false) {
+          throw new Error(response.data?.message || 'Invalid OTP');
         }
         setStep(3);
       } else {
@@ -100,19 +96,13 @@ const ResetPassword = () => {
           throw new Error("Passwords don't match");
         }
 
-        const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: emailTrimmed,
-            newPassword: formData.newPassword,
-            otp
-          })
+        const response = await api.post('/auth/reset-password', {
+          email: emailTrimmed,
+          newPassword: formData.newPassword,
+          otp
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to reset password');
+        if (response.status !== 200 || response.data?.success === false) {
+          throw new Error(response.data?.message || 'Failed to reset password');
         }
 
         setSuccessMessage('Password reset successful!');
@@ -126,7 +116,7 @@ const ResetPassword = () => {
         }, 2000);
       }
     } catch (error) {
-      setError(error.message);
+      setError(error.response ? getApiErrorMessage(error, 'Request failed. Please try again.') : error.message);
     } finally {
       setLoading(false);
     }
@@ -319,22 +309,19 @@ const ResetPassword = () => {
                   onClick={async () => {
                     if (countdown === 0) {
                       try {
-                        const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: formData.email })
+                        const response = await api.post('/auth/send-otp', {
+                          email: formData.email.trim()
                         });
 
-                        if (!response.ok) {
-                          const errorData = await response.json();
-                          setError(errorData.message || 'Failed to resend OTP');
+                        if (response.status !== 200 || response.data?.success === false) {
+                          setError(response.data?.message || 'Failed to resend OTP');
                           return;
                         }
 
                         setCountdown(60);
                         setError('');
                       } catch (error) {
-                        setError('Failed to resend OTP. Please try again.');
+                        setError(getApiErrorMessage(error, 'Failed to resend OTP. Please try again.'));
                       }
                     }
                   }}

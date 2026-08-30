@@ -1,8 +1,15 @@
 const nodemailer = require('nodemailer');
 
 const createTransporter = () => {
-  const { EMAIL_USER, EMAIL_PASS } = process.env;
-  if (!EMAIL_USER || !EMAIL_PASS) throw new Error('EMAIL_USER and EMAIL_PASS must be configured');
+  const EMAIL_USER = process.env.EMAIL_USER?.trim();
+  // Gmail displays app passwords in groups; SMTP expects the 16 characters without spaces.
+  const EMAIL_PASS = process.env.EMAIL_PASS?.replace(/\s/g, '');
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    const missing = [!EMAIL_USER && 'EMAIL_USER', !EMAIL_PASS && 'EMAIL_PASS'].filter(Boolean);
+    const error = new Error(`Missing SMTP environment variable(s): ${missing.join(', ')}`);
+    error.code = 'SMTP_CONFIG_MISSING';
+    throw error;
+  }
 
   return nodemailer.createTransport({
     service: 'gmail',
@@ -12,8 +19,9 @@ const createTransporter = () => {
 
 /** Send a password reset OTP email. */
 const sendResetOtpEmail = async (toEmail, otp) => {
-  await createTransporter().sendMail({
-    from: `"LifeLink Blood Bank" <${process.env.EMAIL_USER}>`,
+  const emailUser = process.env.EMAIL_USER?.trim();
+  const info = await createTransporter().sendMail({
+    from: `"LifeLink Blood Bank" <${emailUser}>`,
     to: toEmail,
     subject: 'LifeLink - Password Reset Verification Code',
     html: `
@@ -30,6 +38,8 @@ const sendResetOtpEmail = async (toEmail, otp) => {
       </div>
     `
   });
+
+  return info;
 };
 
 module.exports = { sendResetOtpEmail };
